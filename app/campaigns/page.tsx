@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { AppShell } from '@/components/layout/AppShell'
 import { StatusBadge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Spinner } from '@/components/ui/Spinner'
-import { Send, Upload, ChevronRight, Trash2 } from 'lucide-react'
+import { FadeIn, StaggerList, StaggerItem } from '@/components/animations/FadeIn'
+import { motion } from 'framer-motion'
+import { Send, Upload, ChevronRight, Trash2, ArrowUpRight } from 'lucide-react'
 import { formatDate } from '@/utils/helpers'
 import toast from 'react-hot-toast'
 import type { Campaign } from '@/types'
@@ -25,13 +26,10 @@ export default function CampaignsPage() {
     }
   }
 
-  useEffect(() => {
-    fetchCampaigns()
-  }, [])
+  useEffect(() => { fetchCampaigns() }, [])
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete campaign "${name}"? This cannot be undone.`)) return
-
     try {
       const res = await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
       const json = await res.json()
@@ -46,130 +44,204 @@ export default function CampaignsPage() {
     }
   }
 
+  const accentByStatus: Record<string, string> = {
+    running: '#60a5fa',
+    completed: '#34d399',
+    failed: '#f87171',
+    paused: '#fbbf24',
+    pending: '#6366f1',
+  }
+
   return (
     <AppShell>
-      <div className="animate-slide-up">
-        <div className="flex items-center justify-between mb-8">
+      {/* Header */}
+      <FadeIn direction="down" duration={0.5}>
+        <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Campaigns</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage and track your email campaigns</p>
+            <h1 className="font-heading text-3xl text-white mb-1">Campaigns</h1>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Manage and track your email outreach campaigns
+            </p>
           </div>
-          <Link href="/upload" className="btn-primary">
-            <Upload size={15} />
+          <Link
+            href="/upload"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
+            style={{
+              background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+              boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+            }}
+          >
+            <Upload size={13} />
             New Campaign
+            <ArrowUpRight size={12} className="opacity-70" />
           </Link>
         </div>
+      </FadeIn>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Spinner size={24} />
+      {loading ? (
+        <div className="flex items-center justify-center py-24">
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-2 h-2 rounded-full"
+                style={{ background: 'var(--accent)' }}
+                animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+              />
+            ))}
           </div>
-        ) : campaigns.length === 0 ? (
+        </div>
+      ) : campaigns.length === 0 ? (
+        <FadeIn>
           <EmptyState
             icon={Send}
             title="No campaigns yet"
-            description="Upload a file to create your first campaign and start sending outreach emails."
+            description="Upload a leads file to create your first campaign and start your outreach."
             action={
-              <Link href="/upload" className="btn-primary">
-                <Upload size={15} />
+              <Link
+                href="/upload"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white"
+                style={{
+                  background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                  boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                }}
+              >
+                <Upload size={13} />
                 Create Campaign
               </Link>
             }
           />
-        ) : (
-          <div className="space-y-3">
-            {campaigns.map((campaign) => (
-              <div key={campaign.id} className="card hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-4 p-5">
-                  {/* Status indicator */}
-                  <div
-                    className={`w-2 h-10 rounded-full shrink-0 ${
-                      campaign.status === 'running'
-                        ? 'bg-blue-400'
-                        : campaign.status === 'completed'
-                        ? 'bg-green-400'
-                        : campaign.status === 'failed'
-                        ? 'bg-red-400'
-                        : campaign.status === 'paused'
-                        ? 'bg-yellow-400'
-                        : 'bg-gray-200'
-                    }`}
-                  />
+        </FadeIn>
+      ) : (
+        <StaggerList className="space-y-3">
+          {campaigns.map((campaign) => {
+            const accent = accentByStatus[campaign.status] || '#6366f1'
+            const total = campaign.total_leads || 0
+            const sent = campaign.sent_leads || 0
+            const replied = campaign.replied_leads || 0
+            const progress = total > 0 ? (sent / total) * 100 : 0
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-semibold text-gray-900 truncate">{campaign.name}</h3>
-                      <StatusBadge status={campaign.status} />
-                    </div>
-                    <p className="text-xs text-gray-400">{formatDate(campaign.created_at)}</p>
-                  </div>
+            return (
+              <StaggerItem key={campaign.id}>
+                <div
+                  className="rounded-2xl overflow-hidden transition-all duration-200 group"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    backdropFilter: 'blur(20px)',
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLDivElement
+                    el.style.background = 'rgba(255,255,255,0.05)'
+                    el.style.borderColor = 'rgba(255,255,255,0.11)'
+                    el.style.transform = 'translateY(-1px)'
+                    el.style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)'
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLDivElement
+                    el.style.background = 'rgba(255,255,255,0.03)'
+                    el.style.borderColor = 'rgba(255,255,255,0.07)'
+                    el.style.transform = 'translateY(0)'
+                    el.style.boxShadow = 'none'
+                  }}
+                >
+                  {/* Top accent stripe */}
+                  {campaign.status === 'running' && (
+                    <div
+                      className="h-px animate-shimmer"
+                      style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }}
+                    />
+                  )}
 
-                  {/* Stats */}
-                  <div className="hidden sm:flex items-center gap-6 text-center">
-                    <div>
-                      <div className="text-lg font-bold text-gray-800">
-                        {(campaign.total_leads || 0).toLocaleString()}
+                  <div className="flex items-center gap-4 p-5">
+                    {/* Status stripe */}
+                    <div
+                      className="w-1 h-10 rounded-full shrink-0"
+                      style={{ background: accent, boxShadow: `0 0 8px ${accent}60` }}
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2.5 mb-1">
+                        <h3 className="font-semibold text-white truncate">{campaign.name}</h3>
+                        <StatusBadge status={campaign.status} />
                       </div>
-                      <div className="text-xs text-gray-400">Leads</div>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Created {formatDate(campaign.created_at)}
+                      </p>
                     </div>
-                    <div>
-                      <div className="text-lg font-bold text-green-600">
-                        {(campaign.sent_leads || 0).toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-400">Sent</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-purple-600">
-                        {(campaign.replied_leads || 0).toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-400">Replied</div>
-                    </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handleDelete(campaign.id, campaign.name)
-                      }}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                    <Link
-                      href={`/campaigns/${campaign.id}`}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                    >
-                      <ChevronRight size={16} />
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Progress bar for running campaigns */}
-                {campaign.status === 'running' && campaign.total_leads && campaign.total_leads > 0 && (
-                  <div className="px-5 pb-4">
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
-                      <span>Progress</span>
-                      <span>
-                        {campaign.sent_leads || 0}/{campaign.total_leads} sent
-                      </span>
+                    {/* Stats */}
+                    <div className="hidden sm:flex items-center gap-6 text-center">
+                      {[
+                        { label: 'Leads',   value: total,   color: 'var(--text-secondary)' },
+                        { label: 'Sent',    value: sent,    color: '#34d399' },
+                        { label: 'Replied', value: replied, color: '#a78bfa' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label}>
+                          <div className="text-base font-semibold tabular-nums" style={{ color }}>{value.toLocaleString()}</div>
+                          <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-brand-400 rounded-full transition-all"
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5">
+                      <motion.button
+                        onClick={(e) => { e.preventDefault(); handleDelete(campaign.id, campaign.name) }}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+                        style={{ color: 'var(--text-muted)' }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = '#f87171'}
+                        onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'}
+                      >
+                        <Trash2 size={13} />
+                      </motion.button>
+                      <Link
+                        href={`/campaigns/${campaign.id}`}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg transition-all"
                         style={{
-                          width: `${((campaign.sent_leads || 0) / campaign.total_leads) * 100}%`,
+                          background: 'rgba(99,102,241,0.1)',
+                          color: 'var(--accent-light)',
+                          border: '1px solid rgba(99,102,241,0.2)',
                         }}
-                      />
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(99,102,241,0.2)'
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(99,102,241,0.1)'
+                        }}
+                      >
+                        <ChevronRight size={14} />
+                      </Link>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+                  {/* Progress bar for running campaigns */}
+                  {(campaign.status === 'running' || campaign.status === 'paused') && total > 0 && (
+                    <div className="px-5 pb-4">
+                      <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                        <span>Progress</span>
+                        <span>{sent}/{total} sent</span>
+                      </div>
+                      <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ background: `linear-gradient(90deg, ${accent}, ${accent}aa)` }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </StaggerItem>
+            )
+          })}
+        </StaggerList>
+      )}
     </AppShell>
   )
 }

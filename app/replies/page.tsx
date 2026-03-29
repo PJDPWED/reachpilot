@@ -4,17 +4,12 @@ import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/layout/AppShell'
 import { StatusBadge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Spinner } from '@/components/ui/Spinner'
 import { Modal } from '@/components/ui/Modal'
+import { FadeIn, StaggerList, StaggerItem } from '@/components/animations/FadeIn'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Inbox,
-  ThumbsUp,
-  ThumbsDown,
-  Minus,
-  Sparkles,
-  Send,
-  Eye,
-  RefreshCw,
+  Inbox, ThumbsUp, ThumbsDown, Minus,
+  Sparkles, Send, Eye, RefreshCw,
 } from 'lucide-react'
 import { formatRelative, truncate } from '@/utils/helpers'
 import toast from 'react-hot-toast'
@@ -36,10 +31,10 @@ interface ReplyWithLead {
   } | null
 }
 
-const classificationConfig = {
-  YES: { label: 'Interested', icon: ThumbsUp, color: 'text-green-600', bg: 'bg-green-50' },
-  NO: { label: 'Not Interested', icon: ThumbsDown, color: 'text-red-500', bg: 'bg-red-50' },
-  NEUTRAL: { label: 'Neutral', icon: Minus, color: 'text-gray-500', bg: 'bg-gray-100' },
+const classConfig = {
+  YES:     { label: 'Interested',      icon: ThumbsUp,   color: '#34d399', bg: 'rgba(52,211,153,0.10)',  border: 'rgba(52,211,153,0.2)'  },
+  NO:      { label: 'Not Interested',  icon: ThumbsDown, color: '#f87171', bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.2)' },
+  NEUTRAL: { label: 'Neutral',         icon: Minus,      color: '#94a3b8', bg: 'rgba(148,163,184,0.08)', border: 'rgba(148,163,184,0.15)' },
 }
 
 export default function RepliesPage() {
@@ -61,9 +56,7 @@ export default function RepliesPage() {
     }
   }
 
-  useEffect(() => {
-    fetchReplies()
-  }, [])
+  useEffect(() => { fetchReplies() }, [])
 
   const handlePollReplies = async () => {
     setPollingLoading(true)
@@ -111,67 +104,104 @@ export default function RepliesPage() {
   }
 
   const filtered = filter === 'ALL' ? replies : replies.filter((r) => r.classification === filter)
-  const yesCount = replies.filter((r) => r.classification === 'YES').length
-  const noCount = replies.filter((r) => r.classification === 'NO').length
-  const neutralCount = replies.filter((r) => r.classification === 'NEUTRAL').length
+  const counts = {
+    YES:     replies.filter((r) => r.classification === 'YES').length,
+    NO:      replies.filter((r) => r.classification === 'NO').length,
+    NEUTRAL: replies.filter((r) => r.classification === 'NEUTRAL').length,
+  }
 
   return (
     <AppShell>
-      <div className="animate-slide-up">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <FadeIn direction="down" duration={0.5}>
+        <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Replies Inbox</h1>
-            <p className="text-gray-500 text-sm mt-1">AI-classified replies with suggested follow-ups</p>
+            <h1 className="font-heading text-3xl text-white mb-1">Replies Inbox</h1>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              AI-classified replies with suggested follow-ups
+            </p>
           </div>
-          <button
+          <motion.button
             onClick={handlePollReplies}
             disabled={pollingLoading}
-            className="btn-secondary"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              color: 'var(--text-secondary)',
+            }}
+            whileHover={{ scale: 1.02, background: 'rgba(255,255,255,0.08)' as string }}
+            whileTap={{ scale: 0.97 }}
           >
-            {pollingLoading ? (
-              <Spinner size={14} />
-            ) : (
-              <RefreshCw size={14} />
-            )}
-            Check for replies
-          </button>
+            <RefreshCw size={13} className={pollingLoading ? 'animate-spin' : ''} />
+            {pollingLoading ? 'Checking...' : 'Check for replies'}
+          </motion.button>
         </div>
+      </FadeIn>
 
-        {/* Classification summary */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          {[
-            { key: 'YES', count: yesCount, ...classificationConfig.YES },
-            { key: 'NO', count: noCount, ...classificationConfig.NO },
-            { key: 'NEUTRAL', count: neutralCount, ...classificationConfig.NEUTRAL },
-          ].map(({ key, count, label, icon: Icon, color, bg }) => (
-            <button
-              key={key}
-              onClick={() => setFilter(filter === key ? 'ALL' : key as 'YES' | 'NO' | 'NEUTRAL')}
-              className={`card p-4 text-left transition-all ${
-                filter === key ? 'ring-2 ring-brand-400' : 'hover:shadow-md'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center`}>
-                  <Icon size={15} className={color} />
+      {/* Classification filter cards */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {(Object.entries(classConfig) as [keyof typeof classConfig, typeof classConfig[keyof typeof classConfig]][]).map(([key, cfg], i) => {
+          const Icon = cfg.icon
+          const isActive = filter === key
+          return (
+            <FadeIn key={key} delay={i * 0.07}>
+              <motion.button
+                onClick={() => setFilter(isActive ? 'ALL' : key)}
+                className="relative w-full text-left p-4 rounded-2xl transition-all overflow-hidden"
+                style={{
+                  background: isActive ? cfg.bg : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${isActive ? cfg.border : 'rgba(255,255,255,0.07)'}`,
+                }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center"
+                    style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
+                  >
+                    <Icon size={14} style={{ color: cfg.color }} />
+                  </div>
+                  <AnimatePresence>
+                    {isActive && (
+                      <motion.span
+                        className="text-xs font-medium px-2 py-0.5 rounded-full"
+                        style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                      >
+                        Active
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </div>
-                {filter === key && (
-                  <span className="text-xs text-brand-500 font-medium">Filtered</span>
-                )}
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{count}</div>
-              <div className="text-xs text-gray-500">{label}</div>
-            </button>
-          ))}
-        </div>
+                <div className="font-heading text-2xl text-white mb-0.5">{counts[key]}</div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{cfg.label}</div>
+              </motion.button>
+            </FadeIn>
+          )
+        })}
+      </div>
 
-        {/* Replies list */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Spinner size={24} />
+      {/* Replies list */}
+      {loading ? (
+        <div className="flex items-center justify-center py-24">
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-2 h-2 rounded-full"
+                style={{ background: 'var(--accent)' }}
+                animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+              />
+            ))}
           </div>
-        ) : filtered.length === 0 ? (
+        </div>
+      ) : filtered.length === 0 ? (
+        <FadeIn>
           <EmptyState
             icon={Inbox}
             title={filter === 'ALL' ? 'No replies yet' : `No ${filter} replies`}
@@ -182,152 +212,231 @@ export default function RepliesPage() {
             }
             action={
               filter !== 'ALL' ? (
-                <button onClick={() => setFilter('ALL')} className="btn-secondary">
+                <button
+                  onClick={() => setFilter('ALL')}
+                  className="px-4 py-2 rounded-xl text-sm font-medium"
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   Show all replies
                 </button>
               ) : undefined
             }
           />
-        ) : (
-          <div className="space-y-3">
-            {filtered.map((reply) => {
-              const cls = reply.classification
-              const config = cls ? classificationConfig[cls] : null
-              const Icon = config?.icon
+        </FadeIn>
+      ) : (
+        <StaggerList className="space-y-3">
+          {filtered.map((reply) => {
+            const cls = reply.classification
+            const cfg = cls ? classConfig[cls] : null
+            const Icon = cfg?.icon
 
-              return (
-                <div key={reply.id} className="card p-5">
+            return (
+              <StaggerItem key={reply.id}>
+                <div
+                  className="rounded-2xl p-5 transition-all duration-200"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    backdropFilter: 'blur(20px)',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.05)'
+                    ;(e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.10)'
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)'
+                    ;(e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.07)'
+                  }}
+                >
                   <div className="flex items-start gap-4">
-                    {/* Classification badge */}
-                    <div className={`shrink-0 w-9 h-9 rounded-xl ${config?.bg || 'bg-gray-50'} flex items-center justify-center`}>
+                    {/* Classification icon */}
+                    <div
+                      className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
+                      style={{
+                        background: cfg?.bg || 'rgba(255,255,255,0.05)',
+                        border: `1px solid ${cfg?.border || 'rgba(255,255,255,0.08)'}`,
+                      }}
+                    >
                       {Icon ? (
-                        <Icon size={16} className={config?.color || 'text-gray-400'} />
+                        <Icon size={14} style={{ color: cfg?.color || 'var(--text-muted)' }} />
                       ) : (
-                        <Minus size={16} className="text-gray-400" />
+                        <Minus size={14} style={{ color: 'var(--text-muted)' }} />
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1 flex-wrap">
-                        <span className="text-sm font-semibold text-gray-800">
+                      <div className="flex items-center gap-2.5 mb-1 flex-wrap">
+                        <span className="text-sm font-semibold text-white">
                           {reply.leads?.email || 'Unknown'}
                         </span>
-                        {cls && <StatusBadge status={cls} label={config?.label} />}
+                        {cls && <StatusBadge status={cls} label={cfg?.label} />}
                         {reply.follow_up_sent && (
-                          <span className="badge bg-brand-50 text-brand-600">
-                            <Send size={10} className="mr-1" /> Follow-up sent
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--accent-light)', border: '1px solid rgba(99,102,241,0.2)' }}
+                          >
+                            <Send size={9} />
+                            Follow-up sent
                           </span>
                         )}
                       </div>
                       {reply.leads?.campaigns?.name && (
-                        <p className="text-xs text-gray-400 mb-2">
-                          Campaign: {reply.leads.campaigns.name}
+                        <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                          {reply.leads.campaigns.name}
                         </p>
                       )}
-                      <p className="text-sm text-gray-600 leading-relaxed">
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                         {truncate(reply.content, 200)}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-gray-400">{formatRelative(reply.created_at)}</span>
-                      <button
-                        onClick={() => setSelectedReply(reply)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-brand-500 hover:bg-brand-50"
-                        title="View full reply"
-                      >
-                        <Eye size={14} />
-                      </button>
-                      {reply.classification === 'YES' && !reply.follow_up_sent && (
-                        <button
-                          onClick={() => handleViewFollowUp(reply)}
-                          className="btn-primary py-1.5 text-xs"
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {formatRelative(reply.created_at)}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <motion.button
+                          onClick={() => setSelectedReply(reply)}
+                          className="w-8 h-8 flex items-center justify-center rounded-xl"
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            color: 'var(--text-muted)',
+                          }}
+                          whileHover={{ scale: 1.1, color: 'var(--accent-light)' as string }}
+                          whileTap={{ scale: 0.9 }}
                         >
-                          <Sparkles size={12} />
-                          AI Follow-up
-                        </button>
-                      )}
+                          <Eye size={12} />
+                        </motion.button>
+                        {reply.classification === 'YES' && !reply.follow_up_sent && (
+                          <motion.button
+                            onClick={() => handleViewFollowUp(reply)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
+                            style={{
+                              background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                              boxShadow: '0 2px 10px rgba(99,102,241,0.3)',
+                            }}
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                          >
+                            <Sparkles size={10} />
+                            AI Follow-up
+                          </motion.button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+              </StaggerItem>
+            )
+          })}
+        </StaggerList>
+      )}
 
-      {/* Reply detail / follow-up modal */}
-      {selectedReply && (
-        <Modal
-          isOpen={!!selectedReply}
-          onClose={() => { setSelectedReply(null); setFollowUpPreview(null) }}
-          title={`Reply from ${selectedReply.leads?.email || 'Unknown'}`}
-          size="xl"
-        >
+      {/* Reply modal */}
+      <Modal
+        isOpen={!!selectedReply}
+        onClose={() => { setSelectedReply(null); setFollowUpPreview(null) }}
+        title={selectedReply ? `Reply from ${selectedReply.leads?.email || 'Unknown'}` : ''}
+        size="xl"
+      >
+        {selectedReply && (
           <div className="space-y-5">
-            {/* Original reply */}
+            {/* Reply content */}
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <label
+                className="block text-xs font-semibold uppercase tracking-widest mb-2"
+                style={{ color: 'var(--text-muted)' }}
+              >
                 Reply Content
               </label>
-              <div className="mt-2 p-4 bg-gray-50 rounded-xl text-sm text-gray-700 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+              <div
+                className="p-4 rounded-xl text-sm leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto"
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
                 {selectedReply.content}
               </div>
             </div>
 
-            {/* AI Follow-up preview (for YES replies) */}
+            {/* AI follow-up */}
             {selectedReply.classification === 'YES' && !selectedReply.follow_up_sent && (
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles size={14} className="text-brand-500" />
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles size={13} style={{ color: 'var(--accent-light)' }} />
+                  <label
+                    className="text-xs font-semibold uppercase tracking-widest"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
                     AI-Generated Follow-up
                   </label>
                 </div>
 
                 {!followUpPreview ? (
-                  <div className="flex items-center gap-2 text-sm text-gray-400 p-4">
-                    <Spinner size={14} />
+                  <div className="flex items-center gap-2.5 py-5 px-4 rounded-xl text-sm" style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text-muted)' }}>
+                    <div className="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
                     Generating follow-up with GPT-4o...
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="p-4 bg-brand-50/50 rounded-xl border border-brand-100">
-                      <div className="text-xs font-medium text-brand-600 mb-1">Subject</div>
-                      <div className="text-sm font-semibold text-gray-800">{followUpPreview.subject}</div>
-                    </div>
-                    <div className="p-4 bg-brand-50/50 rounded-xl border border-brand-100">
-                      <div className="text-xs font-medium text-brand-600 mb-1">Body</div>
-                      <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                        {followUpPreview.body}
+                    {[
+                      { label: 'Subject', value: followUpPreview.subject },
+                      { label: 'Body',    value: followUpPreview.body    },
+                    ].map(({ label, value }) => (
+                      <div
+                        key={label}
+                        className="p-4 rounded-xl"
+                        style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}
+                      >
+                        <div className="text-xs font-semibold mb-1.5" style={{ color: 'var(--accent-light)' }}>{label}</div>
+                        <div className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                          {value}
+                        </div>
                       </div>
-                    </div>
-                    <button
+                    ))}
+                    <motion.button
                       onClick={() => handleSendFollowUp(selectedReply.id)}
                       disabled={!!followUpLoading}
-                      className="btn-primary w-full justify-center"
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white"
+                      style={{
+                        background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                        boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                        opacity: followUpLoading ? 0.7 : 1,
+                      }}
+                      whileHover={!followUpLoading ? { scale: 1.01 } : {}}
+                      whileTap={!followUpLoading ? { scale: 0.98 } : {}}
                     >
                       {followUpLoading === selectedReply.id ? (
-                        <Spinner size={14} className="text-white" />
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
-                        <Send size={14} />
+                        <Send size={13} />
                       )}
                       Send this Follow-up
-                    </button>
+                    </motion.button>
                   </div>
                 )}
               </div>
             )}
 
             {selectedReply.follow_up_sent && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-lg text-sm">
-                <Send size={14} />
+              <div
+                className="flex items-center gap-2.5 p-3.5 rounded-xl text-sm"
+                style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', color: '#34d399' }}
+              >
+                <Send size={13} />
                 Follow-up already sent for this reply.
               </div>
             )}
           </div>
-        </Modal>
-      )}
+        )}
+      </Modal>
     </AppShell>
   )
 }
