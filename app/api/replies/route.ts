@@ -31,3 +31,5 @@ export async function GET() {
 
   return NextResponse.json({ success: true, data: data || [] })
 }
+
+export const dynamic = 'force-dynamic'

@@ -2,9 +2,14 @@ import OpenAI from 'openai'
 import type { GeneratedEmail, ClassifiedReply, GeneratedFollowUp } from '@/types'
 import { extractCompanyName, extractDomain } from '@/utils/helpers'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-})
+// Lazy initialization — avoids module-level crash when env var is absent at build time
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
+  }
+  return _openai
+}
 
 // ─── Email Generation ──────────────────────────────────────────────────────
 
@@ -50,7 +55,7 @@ Existing body to improve: """${existingBody}"""`
 Body: """${existingBody}"""
 Context: Big Reach PR — Google Business Profile optimization.`
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -152,7 +157,7 @@ ${replyContent.slice(0, 1500)}
 """`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -214,7 +219,7 @@ Output valid JSON with keys: "subject" and "body".`
 Make the follow-up highly persuasive and tailored to their business type based on the domain.`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },

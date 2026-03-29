@@ -56,3 +56,5 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 
   return NextResponse.json({ success: true })
 }
+
+export const dynamic = 'force-dynamic'

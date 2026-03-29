@@ -24,3 +24,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 })
 }
+
+export const dynamic = 'force-dynamic'

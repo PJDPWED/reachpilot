@@ -95,3 +95,5 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   return NextResponse.json({ success: true, data: followUp })
 }
+
+export const dynamic = 'force-dynamic'
