@@ -2,22 +2,28 @@
 
 import { cn } from '@/utils/helpers'
 
-const configs: Record<string, { bg: string; text: string; dot: string; extra?: string }> = {
-  pending:   { bg: 'rgba(148,163,184,0.12)', text: '#94a3b8', dot: '#94a3b8' },
-  queued:    { bg: 'rgba(59,130,246,0.14)',  text: '#60a5fa', dot: '#60a5fa' },
-  sending:   { bg: 'rgba(245,158,11,0.14)',  text: '#fbbf24', dot: '#fbbf24', extra: 'animate-pulse' },
-  sent:      { bg: 'rgba(16,185,129,0.14)',  text: '#34d399', dot: '#34d399' },
-  failed:    { bg: 'rgba(239,68,68,0.14)',   text: '#f87171', dot: '#f87171' },
-  replied:   { bg: 'rgba(167,139,250,0.15)', text: '#a78bfa', dot: '#a78bfa' },
-  running:   { bg: 'rgba(59,130,246,0.14)',  text: '#60a5fa', dot: '#60a5fa', extra: 'animate-pulse' },
-  paused:    { bg: 'rgba(245,158,11,0.14)',  text: '#fbbf24', dot: '#fbbf24' },
-  completed: { bg: 'rgba(16,185,129,0.14)',  text: '#34d399', dot: '#34d399' },
-  YES:       { bg: 'rgba(16,185,129,0.14)',  text: '#34d399', dot: '#34d399' },
-  NO:        { bg: 'rgba(239,68,68,0.14)',   text: '#f87171', dot: '#f87171' },
-  NEUTRAL:   { bg: 'rgba(148,163,184,0.12)', text: '#94a3b8', dot: '#94a3b8' },
+// Red/Gold palette — Rocket Lead Deutschland Edition
+const configs: Record<string, { bg: string; border: string; text: string; dot: string; extra?: string }> = {
+  pending:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.12)', text: 'rgba(255,255,255,0.45)', dot: 'rgba(255,255,255,0.4)' },
+  queued:    { bg: 'rgba(255,206,0,0.08)',   border: 'rgba(255,206,0,0.30)',   text: '#FFCE00',               dot: '#FFCE00',   extra: 'animate-pulse' },
+  sending:   { bg: 'rgba(255,0,0,0.08)',     border: 'rgba(255,0,0,0.35)',     text: '#FF0000',               dot: '#FF0000',   extra: 'animate-pixel-blink' },
+  sent:      { bg: 'rgba(255,206,0,0.10)',   border: 'rgba(255,206,0,0.35)',   text: '#FFCE00',               dot: '#FFCE00' },
+  failed:    { bg: 'rgba(255,0,0,0.10)',     border: 'rgba(255,0,0,0.40)',     text: '#FF0000',               dot: '#FF0000' },
+  replied:   { bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.15)', text: '#fff',                  dot: '#fff' },
+  running:   { bg: 'rgba(255,0,0,0.10)',     border: 'rgba(255,0,0,0.40)',     text: '#FF0000',               dot: '#FF0000',   extra: 'animate-pixel-blink' },
+  paused:    { bg: 'rgba(255,206,0,0.08)',   border: 'rgba(255,206,0,0.30)',   text: '#FFCE00',               dot: '#FFCE00' },
+  completed: { bg: 'rgba(255,206,0,0.10)',   border: 'rgba(255,206,0,0.40)',   text: '#FFCE00',               dot: '#FFCE00' },
+  YES:       { bg: 'rgba(255,206,0,0.10)',   border: 'rgba(255,206,0,0.35)',   text: '#FFCE00',               dot: '#FFCE00' },
+  NO:        { bg: 'rgba(255,0,0,0.10)',     border: 'rgba(255,0,0,0.35)',     text: '#FF0000',               dot: '#FF0000' },
+  NEUTRAL:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.10)', text: 'rgba(255,255,255,0.40)', dot: 'rgba(255,255,255,0.35)' },
 }
 
-const defaultConfig = { bg: 'rgba(148,163,184,0.12)', text: '#94a3b8', dot: '#94a3b8' }
+const defaultConfig = {
+  bg: 'rgba(255,255,255,0.04)',
+  border: 'rgba(255,255,255,0.10)',
+  text: 'rgba(255,255,255,0.40)',
+  dot: 'rgba(255,255,255,0.35)',
+}
 
 interface StatusBadgeProps {
   status: string
@@ -28,21 +34,36 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, label, className, size = 'md' }: StatusBadgeProps) {
   const cfg = configs[status] ?? defaultConfig
+  const displayLabel = label || status.toUpperCase()
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 font-medium rounded-full',
-        size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs',
+        'inline-flex items-center gap-1.5',
+        size === 'sm' ? 'px-2 py-0.5' : 'px-2.5 py-1',
         className
       )}
-      style={{ background: cfg.bg, color: cfg.text }}
+      style={{
+        background: cfg.bg,
+        border: `2px solid ${cfg.border}`,
+        color: cfg.text,
+        fontFamily: "'VT323', monospace",
+        fontSize: size === 'sm' ? '13px' : '14px',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        imageRendering: 'pixelated',
+      }}
     >
       <span
-        className={cn('w-1.5 h-1.5 rounded-full shrink-0', cfg.extra)}
-        style={{ background: cfg.dot }}
+        className={cn('shrink-0', cfg.extra)}
+        style={{
+          width: 5, height: 5,
+          background: cfg.dot,
+          imageRendering: 'pixelated',
+          display: 'inline-block',
+        }}
       />
-      {label || status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
+      {displayLabel}
     </span>
   )
 }

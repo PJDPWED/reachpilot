@@ -6,7 +6,58 @@ import { useEffect } from 'react'
 import { Sidebar } from './Sidebar'
 import { AmbientBackground } from '@/components/background/AmbientBackground'
 import { motion } from 'framer-motion'
-import { Rocket } from 'lucide-react'
+
+// ─── Pixel Rocket — Loading Screen ────────────────────────────────────────────
+// Black/Red/Gold — Rocket Lead Deutschland palette
+
+const PIXEL_MAP: string[] = [
+  '000010000',
+  '000121000',
+  '001212100',
+  '011222110',
+  '011212110',
+  '001212100',
+  '010000010',
+  '100333001',
+  '000333000',
+]
+const PIXEL_COLORS: Record<string, string> = {
+  '0': 'transparent',
+  '1': '#FF0000',   // red body
+  '2': '#ffffff',   // white highlight
+  '3': '#FFCE00',   // gold flame
+}
+
+function LoadingRocket() {
+  return (
+    <motion.div
+      animate={{ y: [0, -8, 0] }}
+      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(9, 7px)',
+          gridTemplateRows: 'repeat(9, 7px)',
+          imageRendering: 'pixelated',
+          gap: 0,
+          filter: 'drop-shadow(0 0 14px rgba(255,0,0,0.9))',
+        }}
+      >
+        {PIXEL_MAP.flatMap((row, y) =>
+          row.split('').map((cell, x) => (
+            <div
+              key={`${y}-${x}`}
+              style={{ width: 7, height: 7, background: PIXEL_COLORS[cell] ?? 'transparent' }}
+            />
+          ))
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── AppShell ─────────────────────────────────────────────────────────────────
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
@@ -20,39 +71,64 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-deep)' }}>
+      <div
+        className="flex items-center justify-center min-h-dvh"
+        style={{ background: '#000000' }}
+      >
         <AmbientBackground />
+
         <motion.div
-          className="flex flex-col items-center gap-5 relative z-10"
+          className="flex flex-col items-center gap-6 relative z-10"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring', stiffness: 120, damping: 18 }}
         >
-          {/* Logo mark */}
+          <LoadingRocket />
+
+          {/* Brand name */}
           <motion.div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              boxShadow: '0 8px 32px rgba(99,102,241,0.5), 0 1px 0 rgba(255,255,255,0.2) inset',
-            }}
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            className="text-center"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
           >
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
-            <Rocket size={22} className="text-white relative z-10" />
+            <div
+              className="text-white mb-1 font-mono"
+              style={{ fontSize: '2rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}
+            >
+              ROCKET LEAD
+            </div>
+            <div
+              className="tracking-widest uppercase animate-pixel-flicker font-mono"
+              style={{
+                fontSize: '14px',
+                color: '#FF0000',
+                letterSpacing: '0.16em',
+              }}
+            >
+              INITIALIZING SYSTEM...
+            </div>
           </motion.div>
 
-          {/* Spinner dots */}
-          <div className="flex gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: 'var(--accent)' }}
-                animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-              />
-            ))}
+          {/* Pixel loading bar */}
+          <div
+            style={{
+              width: 140,
+              height: 6,
+              background: 'rgba(255,0,0,0.08)',
+              border: '2px solid rgba(255,0,0,0.35)',
+              overflow: 'hidden',
+            }}
+          >
+            <motion.div
+              style={{
+                height: '100%',
+                background: 'repeating-linear-gradient(90deg, #FF0000 0px, #FF0000 6px, #FFCE00 6px, #FFCE00 12px)',
+                backgroundSize: '12px 100%',
+              }}
+              animate={{ width: ['0%', '100%'], backgroundPosition: ['0% 0%', '100% 0%'] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            />
           </div>
         </motion.div>
       </div>
@@ -62,11 +138,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (!session) return null
 
   return (
-    <div className="relative min-h-screen" style={{ background: 'var(--bg-deep)' }}>
+    <div
+      className="relative min-h-dvh"
+      style={{ background: '#000000' }}
+    >
       <AmbientBackground />
       <Sidebar />
-      <main className="flex-1 ml-64 min-h-screen relative z-10">
-        <div className="max-w-6xl mx-auto px-8 py-8">
+      <main className="flex-1 ml-64 min-h-dvh relative z-10">
+        <div className="w-full px-8 py-8">
           {children}
         </div>
       </main>

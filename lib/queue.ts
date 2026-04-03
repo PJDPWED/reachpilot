@@ -1,15 +1,15 @@
 import { createServerSupabaseClient } from './supabase'
-import { sendEmail } from './gmail'
+import { sendEmailWithFallback } from './email'
 import { nextSendAt } from '@/utils/helpers'
 import type { Lead } from '@/types'
 
 const MAX_RETRIES = 3
 
-// ─── Queue Initialization ──────────────────────────────────────────────────
+// ─── Queue Initialization ──────────────────────────────────────────────────────
 
 /**
  * Enqueues all pending leads for a campaign.
- * Sets the first lead to send immediately, subsequent leads get random delays.
+ * First lead sends immediately; each subsequent lead gets an 8–10 min random delay.
  */
 export async function initializeCampaignQueue(
   campaignId: string,
@@ -17,7 +17,6 @@ export async function initializeCampaignQueue(
 ): Promise<{ queued: number }> {
   const db = createServerSupabaseClient()
 
-  // Get all pending leads for the campaign
   const { data: leads, error } = await db
     .from('leads')
     .select('id')
@@ -28,8 +27,7 @@ export async function initializeCampaignQueue(
   if (error) throw new Error(`Failed to fetch leads: ${error.message}`)
   if (!leads || leads.length === 0) return { queued: 0 }
 
-  // Schedule them sequentially with 8–10 min gaps
-  // First lead sends immediately; each subsequent lead waits a random 8-10 min after the previous
+  // Schedule sequentially: first sends now, each subsequent waits 8–10 min
   const now = new Date()
   let baseTime = now.getTime()
 
@@ -45,7 +43,6 @@ export async function initializeCampaignQueue(
     }
   })
 
-  // Batch update
   for (const update of updates) {
     await db
       .from('leads')
@@ -53,62 +50,61 @@ export async function initializeCampaignQueue(
       .eq('id', update.id)
   }
 
-  // Update campaign status
   await db.from('campaigns').update({ status: 'running' }).eq('id', campaignId)
 
-  // Log
   await logEvent(null, `Campaign ${campaignId} started — ${leads.length} leads queued`, {
     campaign_id: campaignId,
     user_email: userEmail,
+    total_leads: leads.length,
   })
 
   return { queued: leads.length }
 }
 
 function getRandomDelayMs(): number {
-  const min = 8 * 60 * 1000 // 8 min
-  const max = 10 * 60 * 1000 // 10 min
+  const min = 8 * 60 * 1000  // 8 minutes
+  const max = 10 * 60 * 1000 // 10 minutes
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-// ─── Queue Processor ───────────────────────────────────────────────────────
+// ─── Queue Processor ───────────────────────────────────────────────────────────
 
 /**
- * Processes one batch of due emails across all running campaigns.
+ * Processes up to 5 due emails across all running campaigns.
  * Called every minute by Vercel Cron.
- * Returns the number of emails processed.
  */
-export async function processQueue(userEmail: string): Promise<{ processed: number; errors: number }> {
+export async function processQueue(
+  userEmail: string
+): Promise<{ processed: number; errors: number }> {
   const db = createServerSupabaseClient()
 
-  // Find leads that are queued and due
-  const { data: dueleads, error } = await db
+  const { data: dueLeads, error } = await db
     .from('leads')
     .select('*, campaigns(status)')
     .eq('status', 'queued')
     .lte('scheduled_at', new Date().toISOString())
     .order('scheduled_at', { ascending: true })
-    .limit(5) // Process max 5 per cron tick to avoid timeouts
+    .limit(5)
 
   if (error) {
     console.error('[Queue] Failed to fetch due leads:', error)
     return { processed: 0, errors: 0 }
   }
 
-  if (!dueleads || dueleads.length === 0) return { processed: 0, errors: 0 }
+  if (!dueLeads || dueLeads.length === 0) return { processed: 0, errors: 0 }
 
   let processed = 0
   let errors = 0
 
-  for (const lead of dueleads as Lead[]) {
-    // Skip if campaign is paused
+  for (const lead of dueLeads as Lead[]) {
     const campaignData = (lead as Lead & { campaigns?: { status: string } }).campaigns
     if (campaignData?.status === 'paused') continue
 
+    // Mark as sending to prevent duplicate processing
     await db.from('leads').update({ status: 'sending' }).eq('id', lead.id)
 
     try {
-      const result = await sendEmail({
+      const result = await sendEmailWithFallback({
         userEmail,
         to: lead.email,
         subject: lead.subject!,
@@ -126,55 +122,74 @@ export async function processQueue(userEmail: string): Promise<{ processed: numb
         })
         .eq('id', lead.id)
 
-      await logEvent(lead.id, `Email sent to ${lead.email}`, {
-        message_id: result.messageId,
-        thread_id: result.threadId,
-      })
+      await logEvent(
+        lead.id,
+        `Email sent to ${lead.email} via ${result.provider.toUpperCase()}`,
+        {
+          message_id: result.messageId,
+          thread_id: result.threadId,
+          provider: result.provider,
+        }
+      )
 
       processed++
     } catch (err) {
       const errMsg = (err as Error).message
-      console.error(`[Queue] Failed to send to ${lead.email}:`, errMsg)
+      console.error(`[Queue] Send failed for ${lead.email}:`, errMsg)
 
       const newRetryCount = (lead.retry_count || 0) + 1
 
       if (newRetryCount >= MAX_RETRIES) {
+        // Permanent failure
         await db
           .from('leads')
           .update({ status: 'failed', retry_count: newRetryCount })
           .eq('id', lead.id)
 
-        await logEvent(lead.id, `Email failed permanently after ${MAX_RETRIES} retries`, {
-          error: errMsg,
-          email: lead.email,
-        })
+        await logEvent(
+          lead.id,
+          `[FAILED] ${lead.email} — permanently failed after ${newRetryCount} attempts`,
+          {
+            error: errMsg,
+            email: lead.email,
+            retry_count: newRetryCount,
+            final: true,
+          }
+        )
       } else {
-        // Retry after 2 minutes
+        // Requeue with 2-minute backoff
         const retryAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
         await db
           .from('leads')
           .update({ status: 'queued', retry_count: newRetryCount, scheduled_at: retryAt })
           .eq('id', lead.id)
 
-        await logEvent(lead.id, `Email failed, retry ${newRetryCount}/${MAX_RETRIES} scheduled`, {
-          error: errMsg,
-          email: lead.email,
-        })
+        await logEvent(
+          lead.id,
+          `[RETRY ${newRetryCount}/${MAX_RETRIES}] ${lead.email} — ${errMsg.slice(0, 120)}`,
+          {
+            error: errMsg,
+            email: lead.email,
+            retry_count: newRetryCount,
+            retry_at: retryAt,
+          }
+        )
       }
 
       errors++
     }
   }
 
-  // Check if campaigns are now complete
   await checkCampaignCompletion(db)
 
   return { processed, errors }
 }
 
-// ─── Campaign Completion Check ────────────────────────────────────────────
+// ─── Campaign Completion ───────────────────────────────────────────────────────
 
-async function checkCampaignCompletion(db: ReturnType<typeof createServerSupabaseClient>) {
+async function checkCampaignCompletion(
+  db: ReturnType<typeof createServerSupabaseClient>
+) {
   const { data: runningCampaigns } = await db
     .from('campaigns')
     .select('id')
@@ -194,11 +209,15 @@ async function checkCampaignCompletion(db: ReturnType<typeof createServerSupabas
         .from('campaigns')
         .update({ status: 'completed' })
         .eq('id', campaign.id)
+
+      await logEvent(null, `Campaign ${campaign.id} completed`, {
+        campaign_id: campaign.id,
+      })
     }
   }
 }
 
-// ─── Pause / Resume ───────────────────────────────────────────────────────
+// ─── Pause / Resume ────────────────────────────────────────────────────────────
 
 export async function pauseCampaign(campaignId: string): Promise<void> {
   const db = createServerSupabaseClient()
@@ -212,7 +231,7 @@ export async function resumeCampaign(campaignId: string): Promise<void> {
   await logEvent(null, `Campaign ${campaignId} resumed`, { campaign_id: campaignId })
 }
 
-// ─── Logging ──────────────────────────────────────────────────────────────
+// ─── Logging ───────────────────────────────────────────────────────────────────
 
 export async function logEvent(
   leadId: string | null,
@@ -220,10 +239,15 @@ export async function logEvent(
   metadata?: Record<string, unknown>
 ): Promise<void> {
   const db = createServerSupabaseClient()
-  await db.from('logs').insert({
-    lead_id: leadId,
-    event,
-    metadata: metadata ?? null,
-    timestamp: new Date().toISOString(),
-  })
+  try {
+    await db.from('logs').insert({
+      lead_id: leadId,
+      event,
+      metadata: metadata ?? null,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (err) {
+    // Never let logging failures break the main flow
+    console.error('[Queue] Failed to log event:', err)
+  }
 }

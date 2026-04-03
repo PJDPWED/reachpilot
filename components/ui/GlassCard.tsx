@@ -29,7 +29,7 @@ export function GlassCard({
   return (
     <motion.div
       className={cn(
-        'glass-card',
+        'backdrop-blur-xl bg-black/40 border border-white/10',
         paddings[padding],
         glow && 'border-[rgba(99,102,241,0.25)] shadow-glow-accent',
         className

@@ -3,11 +3,16 @@ import './globals.css'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { SmoothScroll } from '@/components/providers/SmoothScroll'
 import { Toaster } from 'react-hot-toast'
+import { Suspense, lazy } from 'react'
+
+const Dithering = lazy(() =>
+  import('@paper-design/shaders-react').then((mod) => ({ default: mod.Dithering }))
+)
 
 export const metadata: Metadata = {
-  title: 'ReachPilot — AI Cold Outreach Automation',
+  title: 'Rocket Lead — Deutschland Edition',
   description:
-    'AI-powered cold email platform with Gmail integration, smart scheduling, reply detection, and automated follow-ups.',
+    'Automated CV cold-email platform for Moroccan professionals targeting German companies. 8-minute SMTP protection, Gemini AI personalization, Gmail API precision.',
   icons: {
     icon: '/favicon.svg',
   },
@@ -15,8 +20,22 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
+    <html lang="de" suppressHydrationWarning>
+      <body className="relative">
+        {/* Global Dithering shader */}
+        <Suspense fallback={<div className="fixed inset-0 bg-black" />}>
+          <div className="fixed inset-0 pointer-events-none z-0">
+            <Dithering
+              colorBack="#00000000"
+              colorFront="#FFCE00"
+              shape="warp"
+              type="4x4"
+              speed={0.18}
+              className="w-full h-full"
+              minPixelRatio={1}
+            />
+          </div>
+        </Suspense>
         <AuthProvider>
           <SmoothScroll />
           {children}
@@ -25,28 +44,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             toastOptions={{
               duration: 4000,
               style: {
-                background: 'rgba(10,10,20,0.92)',
-                backdropFilter: 'blur(20px)',
-                color: '#f1f5f9',
-                borderRadius: '14px',
-                fontSize: '13px',
-                fontWeight: '500',
-                border: '1px solid rgba(255,255,255,0.10)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.08) inset',
-                padding: '12px 16px',
+                background: '#0e0000',
+                color: '#fff',
+                borderRadius: '0px',
+                fontSize: '16px',
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: '0.04em',
+                border: '2px solid rgba(255,0,0,0.5)',
+                boxShadow: '0 0 20px rgba(255,0,0,0.2)',
+                padding: '10px 16px',
               },
               success: {
-                iconTheme: { primary: '#34d399', secondary: '#020203' },
+                iconTheme: { primary: '#FFCE00', secondary: '#000' },
                 style: {
-                  background: 'rgba(10,10,20,0.92)',
-                  border: '1px solid rgba(52,211,153,0.25)',
+                  border: '2px solid rgba(255,206,0,0.6)',
+                  boxShadow: '0 0 20px rgba(255,206,0,0.2)',
                 },
               },
               error: {
-                iconTheme: { primary: '#f87171', secondary: '#020203' },
+                iconTheme: { primary: '#FF0000', secondary: '#000' },
                 style: {
-                  background: 'rgba(10,10,20,0.92)',
-                  border: '1px solid rgba(248,113,113,0.25)',
+                  border: '2px solid rgba(255,0,0,0.7)',
+                  boxShadow: '0 0 20px rgba(255,0,0,0.3)',
                 },
               },
             }}

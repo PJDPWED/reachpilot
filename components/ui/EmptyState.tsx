@@ -18,29 +18,33 @@ export function EmptyState({ icon: Icon, title, description, action, className }
       className={cn('flex flex-col items-center justify-center py-20 text-center', className)}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, type: 'spring', stiffness: 100, damping: 18 }}
+      transition={{ duration: 0.4, type: 'spring', stiffness: 120, damping: 20 }}
     >
       <motion.div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 relative"
+        className="w-16 h-16 flex items-center justify-center mb-5 relative"
         style={{
-          background: 'rgba(99,102,241,0.10)',
-          border: '1px solid rgba(99,102,241,0.20)',
-          boxShadow: '0 0 32px rgba(99,102,241,0.15)',
+          background: 'rgba(255,0,0,0.06)',
+          border: '2px solid rgba(255,0,0,0.30)',
+          boxShadow: '0 0 24px rgba(255,0,0,0.12)',
+          imageRendering: 'pixelated',
         }}
         animate={{ y: [0, -5, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
       >
-        {/* Inner glow */}
-        <div
-          className="absolute inset-0 rounded-2xl opacity-40"
-          style={{ background: 'radial-gradient(circle at 40% 30%, rgba(99,102,241,0.3), transparent 70%)' }}
-        />
-        <Icon size={26} style={{ color: 'var(--accent-light)' }} className="relative z-10" />
+        <Icon size={26} style={{ color: 'rgba(255,0,0,0.7)' }} className="relative z-10" />
       </motion.div>
 
-      <h3 className="font-heading text-lg text-white mb-2">{title}</h3>
+      <h3
+        className="text-white mb-2"
+        style={{ fontFamily: "'VT323', monospace", fontSize: '1.5rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+      >
+        {title}
+      </h3>
       {description && (
-        <p className="text-sm max-w-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+        <p
+          className="max-w-xs leading-snug"
+          style={{ fontFamily: "'VT323', monospace", fontSize: '16px', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+        >
           {description}
         </p>
       )}

@@ -277,7 +277,7 @@ export default function UploadPage() {
                       </div>
                     </div>
                     <p className="text-xs mt-2 font-sans" style={{ color: 'var(--text-muted)' }}>
-                      Only <code className="text-indigo-400 font-mono">email</code> is required —{' '}
+                      Only <code className="text-red-400 font-mono">email</code> is required —{' '}
                       <span style={{ color: 'var(--accent-light)' }}>AI generates subject &amp; body automatically</span>
                     </p>
                   </div>
@@ -463,7 +463,7 @@ export default function UploadPage() {
                     <div>
                       <p className="text-sm font-medium text-white">AI Email Generation</p>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        GPT-4o generates subject + body for leads missing them
+                        Gemini generates subject + body for leads missing them
                       </p>
                     </div>
                   </div>

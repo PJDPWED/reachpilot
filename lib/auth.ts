@@ -61,6 +61,42 @@ export const authOptions: NextAuthOptions = {
           console.error('[Auth] Failed to save tokens:', err)
         }
       }
+
+      // Handle token rotation
+      if (token.expiryDate && Date.now() > token.expiryDate - 5 * 60 * 1000) { // Refresh 5 minutes before expiry
+        try {
+          const response = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              client_id: process.env.GOOGLE_CLIENT_ID!,
+              client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+              grant_type: 'refresh_token',
+              refresh_token: token.refreshToken,
+            }),
+          })
+
+          const data = await response.json()
+
+          if (data.access_token) {
+            token.accessToken = data.access_token
+            token.expiryDate = Date.now() + (data.expires_in ?? 3600) * 1000
+
+            // Save updated tokens
+            await saveGmailTokens(
+              token.userEmail,
+              token.accessToken,
+              token.refreshToken,
+              token.expiryDate
+            )
+          }
+        } catch (err) {
+          console.error('[Auth] Failed to refresh token:', err)
+        }
+      }
+
       return token
     },
 
