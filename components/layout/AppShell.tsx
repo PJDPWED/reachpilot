@@ -3,9 +3,14 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { AmbientBackground } from '@/components/background/AmbientBackground'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
+import {
+  LayoutDashboard, Upload, Send, Inbox,
+} from 'lucide-react'
 
 // ─── Pixel Rocket — Loading Screen ────────────────────────────────────────────
 // Black/Red/Gold — Rocket Lead Deutschland palette
@@ -62,6 +67,14 @@ function LoadingRocket() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
+
+  const navItems = [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/upload',    label: 'Upload',  icon: Upload },
+    { href: '/campaigns', label: 'Campaigns',  icon: Send },
+    { href: '/replies',   label: 'Replies',    icon: Inbox },
+  ]
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -144,11 +157,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     >
       <AmbientBackground />
       <Sidebar />
-      <main className="flex-1 ml-64 min-h-dvh relative z-10">
-        <div className="w-full px-8 py-8">
+      <main className="flex-1 md:ml-64 min-h-dvh relative z-10 pb-16 md:pb-0">
+        <div className="w-full px-4 md:px-8 py-8">
           {children}
         </div>
       </main>
+      {/* Mobile Bottom Nav */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10">
+        <div className="flex justify-around items-center py-2">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors"
+                style={{
+                  color: isActive ? '#FF0000' : 'rgba(255,255,255,0.6)',
+                }}
+              >
+                <Icon size={20} />
+                <span className="text-xs font-mono">{item.label}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

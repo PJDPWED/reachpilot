@@ -33,7 +33,7 @@ function RocketLeadLogo() {
       {/* "ROCKET" text — white */}
       <text
         x="0" y="22"
-        fontFamily="VT323, monospace"
+        fontFamily="Inter, sans-serif"
         fontSize="22"
         fill="#FFFFFF"
         letterSpacing="2"
@@ -44,7 +44,7 @@ function RocketLeadLogo() {
       {/* "LEAD" text — red */}
       <text
         x="76" y="22"
-        fontFamily="VT323, monospace"
+        fontFamily="Inter, sans-serif"
         fontSize="22"
         fill="#FF0000"
         letterSpacing="2"
@@ -100,7 +100,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col w-64 min-h-screen fixed left-0 top-0 z-40"
+      className="hidden md:flex flex-col w-64 min-h-screen fixed left-0 top-0 z-40"
       style={{
         background: '#000000',
         borderRight: '2px solid rgba(255,0,0,0.35)',
@@ -135,9 +135,8 @@ export function Sidebar() {
             style={{ background: '#FF0000', imageRendering: 'pixelated' }}
           />
           <span
-            className="tracking-widest uppercase"
+            className="tracking-widest uppercase font-mono"
             style={{
-              fontFamily: "'VT323', monospace",
               fontSize: '11px',
               color: 'rgba(255,0,0,0.55)',
               letterSpacing: '0.14em',
@@ -151,9 +150,8 @@ export function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4">
         <p
-          className="px-3 mb-3 tracking-widest uppercase"
+          className="px-3 mb-3 tracking-widest uppercase font-sans"
           style={{
-            fontFamily: "'VT323', monospace",
             fontSize: '11px',
             color: 'rgba(255,255,255,0.20)',
             letterSpacing: '0.14em',

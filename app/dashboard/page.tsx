@@ -32,7 +32,7 @@ function StatCard({
   return (
     <FadeIn direction="up" delay={delay}>
       <motion.div
-        className="relative pixel-surface overflow-hidden group cursor-default"
+        className="relative pixel-surface overflow-hidden group cursor-default min-h-[120px]"
         style={{ padding: '20px' }}
         whileHover={{ borderColor: accent, y: -2 }}
         transition={{ duration: 0.1 }}

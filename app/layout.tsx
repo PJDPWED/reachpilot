@@ -10,11 +10,11 @@ const Dithering = lazy(() =>
 )
 
 export const metadata: Metadata = {
-  title: 'Rocket Lead — Deutschland Edition',
+  title: 'Rocket Lead | Deutschland Edition',
   description:
     'Automated CV cold-email platform for Moroccan professionals targeting German companies. 8-minute SMTP protection, Gemini AI personalization, Gmail API precision.',
   icons: {
-    icon: '/favicon.svg',
+    icon: '/rocket-icon.svg',
   },
 }
 
