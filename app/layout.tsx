@@ -5,11 +5,7 @@ import './globals.css'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { SmoothScroll } from '@/components/providers/SmoothScroll'
 import { Toaster } from 'react-hot-toast'
-import { Suspense, lazy } from 'react'
-
-const Dithering = lazy(() =>
-  import('@paper-design/shaders-react').then((mod) => ({ default: mod.Dithering }))
-)
+import { EtheralShadow } from '@/components/ui/etheral-shadow'
 
 export const metadata: Metadata = {
   title: 'Rocket Lead | Deutschland Edition',
@@ -29,31 +25,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="relative antialiased">
 
-        {/* ── Global Dithering Background ───────────────────────────────────── */}
-        {/* Stealth palette: near-black with very subtle warm gold shimmer */}
-        <Suspense fallback={<div className="fixed inset-0 bg-[#000000]" />}>
-          <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
-            <Dithering
-              colorBack="#00000000"
-              colorFront="#1a0a0015"
-              shape="warp"
-              type="4x4"
-              speed={0.10}
-              className="w-full h-full"
-              minPixelRatio={1}
-            />
-          </div>
-        </Suspense>
-
-        {/* ── Ambient radial glow — barely perceptible depth ────────────────── */}
-        <div
-          className="fixed inset-0 pointer-events-none z-0"
-          aria-hidden="true"
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(220,38,38,0.06) 0%, transparent 70%)',
-          }}
-        />
+        {/* ── Global Etheral Shadow Background ─────────────────────────────────── */}
+        <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
+          <EtheralShadow
+            color="rgba(255, 255, 255, 0.11)"
+            animation={{ scale: 55, speed: 25 }}
+            noise={{ opacity: 0.55, scale: 1.0 }}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
 
         {/* ── App Content ───────────────────────────────────────────────────── */}
         <AuthProvider>
@@ -82,11 +62,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 maxWidth: '360px',
               },
               success: {
-                iconTheme: { primary: '#EAB308', secondary: '#000' },
+                iconTheme: { primary: '#ffffff', secondary: '#000' },
                 style: {
-                  border: '1px solid rgba(234, 179, 8, 0.30)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
                   boxShadow:
-                    '0 8px 32px rgba(0,0,0,0.60), 0 0 16px rgba(234,179,8,0.12), inset 0 1px 0 rgba(255,255,255,0.07)',
+                    '0 8px 32px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.07)',
                 },
               },
               error: {
