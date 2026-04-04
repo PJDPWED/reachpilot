@@ -193,7 +193,7 @@ export default function RepliesPage() {
               <motion.div
                 key={i}
                 className="w-2 h-2 rounded-full"
-                style={{ background: 'var(--accent)' }}
+                style={{ background: 'rgba(255,255,255,0.65)' }}
                 animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
                 transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
               />
@@ -277,7 +277,7 @@ export default function RepliesPage() {
                         {reply.follow_up_sent && (
                           <span
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--accent-light)', border: '1px solid rgba(99,102,241,0.2)' }}
+                            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.70)', border: '1px solid rgba(255,255,255,0.15)' }}
                           >
                             <Send size={9} />
                             Follow-up sent
@@ -307,7 +307,7 @@ export default function RepliesPage() {
                             border: '1px solid rgba(255,255,255,0.08)',
                             color: 'var(--text-muted)',
                           }}
-                          whileHover={{ scale: 1.1, color: 'var(--accent-light)' as string }}
+                          whileHover={{ scale: 1.1, color: 'rgba(255,255,255,0.70)' as string }}
                           whileTap={{ scale: 0.9 }}
                         >
                           <Eye size={12} />
@@ -317,8 +317,9 @@ export default function RepliesPage() {
                             onClick={() => handleViewFollowUp(reply)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
                             style={{
-                              background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                              boxShadow: '0 2px 10px rgba(99,102,241,0.3)',
+                              background: '#ffffff',
+                              color: '#000000',
+                              boxShadow: '0 2px 10px rgba(255,255,255,0.10)',
                             }}
                             whileHover={{ scale: 1.03 }}
                             whileTap={{ scale: 0.97 }}
@@ -370,7 +371,7 @@ export default function RepliesPage() {
             {selectedReply.classification === 'YES' && !selectedReply.follow_up_sent && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles size={13} style={{ color: 'var(--accent-light)' }} />
+                  <Sparkles size={13} style={{ color: 'rgba(255,255,255,0.70)' }} />
                   <label
                     className="text-xs font-semibold uppercase tracking-widest"
                     style={{ color: 'var(--text-muted)' }}
@@ -393,9 +394,9 @@ export default function RepliesPage() {
                       <div
                         key={label}
                         className="p-4 rounded-xl"
-                        style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
                       >
-                        <div className="text-xs font-semibold mb-1.5" style={{ color: 'var(--accent-light)' }}>{label}</div>
+                        <div className="text-xs font-semibold mb-1.5" style={{ color: 'rgba(255,255,255,0.70)' }}>{label}</div>
                         <div className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                           {value}
                         </div>
@@ -404,17 +405,18 @@ export default function RepliesPage() {
                     <motion.button
                       onClick={() => handleSendFollowUp(selectedReply.id)}
                       disabled={!!followUpLoading}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white"
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
                       style={{
-                        background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                        boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                        background: '#ffffff',
+                        color: '#000000',
+                        boxShadow: '0 4px 16px rgba(255,255,255,0.10)',
                         opacity: followUpLoading ? 0.7 : 1,
                       }}
                       whileHover={!followUpLoading ? { scale: 1.01 } : {}}
                       whileTap={!followUpLoading ? { scale: 0.98 } : {}}
                     >
                       {followUpLoading === selectedReply.id ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                       ) : (
                         <Send size={13} />
                       )}
