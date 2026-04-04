@@ -215,17 +215,18 @@ export default function CampaignDetailPage() {
               <motion.button
                 onClick={handleStart}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
                 style={{
-                  background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                  boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  boxShadow: '0 4px 16px rgba(255,255,255,0.15)',
                   opacity: actionLoading ? 0.7 : 1,
                 }}
                 whileHover={!actionLoading ? { scale: 1.02 } : {}}
                 whileTap={!actionLoading ? { scale: 0.97 } : {}}
               >
                 {actionLoading ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                 ) : (
                   <Play size={13} />
                 )}
@@ -261,14 +262,15 @@ export default function CampaignDetailPage() {
                 disabled={actionLoading}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
                 style={{
-                  background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                  boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  boxShadow: '0 4px 16px rgba(255,255,255,0.15)',
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
               >
                 {actionLoading ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                 ) : (
                   <Play size={13} />
                 )}
@@ -359,8 +361,7 @@ export default function CampaignDetailPage() {
               <motion.div
                 className="h-full"
                 style={{
-                  background: 'repeating-linear-gradient(90deg, #6366f1 0px, #6366f1 8px, #8b5cf6 8px, #8b5cf6 16px)',
-                  backgroundSize: '16px 100%',
+                  background: 'rgba(255,255,255,0.15)',
                   borderRadius: 1,
                 }}
                 initial={{ width: 0 }}
@@ -506,12 +507,14 @@ export default function CampaignDetailPage() {
               style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
             >
               <div className="flex items-center gap-2">
-                <div
-                  className="w-2 h-2 animate-pixel-blink"
+                <motion.div
                   style={{
+                    width: 8, height: 8,
                     background: campaign.status === 'running' ? '#34d399' : 'var(--text-muted)',
-                    imageRendering: 'pixelated',
+                    borderRadius: 2,
                   }}
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ duration: 1.4, repeat: Infinity }}
                 />
                 <Activity size={13} style={{ color: 'var(--accent-light)' }} />
                 <h3

@@ -68,6 +68,10 @@ export function EtheralShadow({
 
   useEffect(() => {
     if (feColorMatrixRef.current && animationEnabled) {
+      // Respect prefers-reduced-motion
+      if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return
+      }
       if (hueRotateAnimation.current) hueRotateAnimation.current.stop()
       hueRotateMotionValue.set(0)
       hueRotateAnimation.current = animate(hueRotateMotionValue, 360, {
@@ -88,7 +92,7 @@ export function EtheralShadow({
   return (
     <div
       className={className}
-      style={{ overflow: 'hidden', position: 'relative', width: '100%', height: '100%', ...style }}
+      style={{ overflow: 'hidden', position: 'relative', width: '100%', height: '100%', contain: 'strict', ...style }}
       role="presentation"
       aria-hidden="true"
     >
@@ -98,6 +102,7 @@ export function EtheralShadow({
           position: 'absolute',
           inset: -displacementScale,
           filter: animationEnabled ? `url(#${id}) blur(4px)` : 'none',
+          willChange: 'transform',
         }}
       >
         {animationEnabled && (

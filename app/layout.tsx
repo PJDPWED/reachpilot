@@ -28,9 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* ── Global Animated Background ───────────────────────────────────────── */}
         <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
           <EtheralShadow
-            color="rgba(160, 160, 160, 1)"
-            animation={{ scale: 100, speed: 90 }}
-            noise={{ opacity: 1, scale: 1.2 }}
+            color="rgba(140, 140, 140, 1)"
+            animation={{ scale: 60, speed: 70 }}
+            noise={{ opacity: 0.8, scale: 1.1 }}
             sizing="fill"
             style={{ width: '100%', height: '100%' }}
           />
