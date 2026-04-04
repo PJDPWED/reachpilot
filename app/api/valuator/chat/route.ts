@@ -69,6 +69,64 @@ Be specific, professional, and encouraging. Reference actual content from their 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text()
       if (geminiRes.status === 429) {
+        // Quota exceeded — attempt OpenRouter fallback before returning an error
+        const openRouterKey = process.env.OPENROUTER_API_KEY
+        if (openRouterKey) {
+          console.warn('[CV Chat] Gemini quota exceeded — trying OpenRouter fallback')
+          try {
+            const orModels = [
+              'google/gemini-2.0-flash-exp:free',
+              'meta-llama/llama-3.2-11b-vision-instruct:free',
+            ]
+            let orText: string | null = null
+            for (const orModel of orModels) {
+              try {
+                const orRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${openRouterKey}`,
+                    'HTTP-Referer': 'https://rocketlead.app',
+                    'X-Title': 'Rocket Lead',
+                  },
+                  body: JSON.stringify({
+                    model: orModel,
+                    messages: [{ role: 'user', content: parts.map((p) => p.text || '').join('\n') }],
+                    temperature: 0.7,
+                    max_tokens: 2048,
+                  }),
+                })
+                if (!orRes.ok) {
+                  const t = await orRes.text().catch(() => '')
+                  throw new Error(`OpenRouter ${orModel} error ${orRes.status}: ${t.slice(0, 200)}`)
+                }
+                const orData = await orRes.json()
+                orText = orData.choices?.[0]?.message?.content || null
+                if (orText) break
+              } catch (orModelErr) {
+                console.warn(`[CV Chat/OpenRouter] ${orModel} failed: ${(orModelErr as Error).message.slice(0, 80)}`)
+              }
+            }
+            if (orText) {
+              const encoder = new TextEncoder()
+              const fallbackStream = new ReadableStream({
+                start(controller) {
+                  controller.enqueue(encoder.encode(orText!))
+                  controller.close()
+                },
+              })
+              return new Response(fallbackStream, {
+                headers: {
+                  'Content-Type': 'text/plain; charset=utf-8',
+                  'Cache-Control': 'no-cache',
+                  'X-Content-Type-Options': 'nosniff',
+                },
+              })
+            }
+          } catch (orErr) {
+            console.error('[CV Chat] OpenRouter fallback failed:', (orErr as Error).message)
+          }
+        }
         return new Response(
           JSON.stringify({ error: 'QUOTA_EXCEEDED', message: 'API quota exceeded. Please try again in a moment.' }),
           { status: 429, headers: { 'Content-Type': 'application/json' } }
