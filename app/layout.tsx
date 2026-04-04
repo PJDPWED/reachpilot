@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { SmoothScroll } from '@/components/providers/SmoothScroll'
@@ -12,7 +14,7 @@ const Dithering = lazy(() =>
 export const metadata: Metadata = {
   title: 'Rocket Lead | Deutschland Edition',
   description:
-    'Automated CV cold-email platform for Moroccan professionals targeting German companies. 8-minute SMTP protection, Gemini AI personalization, Gmail API precision.',
+    'AI-powered cold outreach platform for Moroccan professionals targeting German Ausbildung companies. 8-minute send protection, Gemini AI personalization, Gmail API precision.',
   icons: {
     icon: '/rocket-icon.svg',
   },
@@ -20,53 +22,83 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" suppressHydrationWarning>
-      <body className="relative">
-        {/* Global Dithering shader */}
-        <Suspense fallback={<div className="fixed inset-0 bg-black" />}>
-          <div className="fixed inset-0 pointer-events-none z-0">
+    <html
+      lang="de"
+      suppressHydrationWarning
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+    >
+      <body className="relative antialiased">
+
+        {/* ── Global Dithering Background ───────────────────────────────────── */}
+        {/* Stealth palette: near-black with very subtle warm gold shimmer */}
+        <Suspense fallback={<div className="fixed inset-0 bg-[#000000]" />}>
+          <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
             <Dithering
               colorBack="#00000000"
-              colorFront="#FFCE00"
+              colorFront="#1a0a0015"
               shape="warp"
               type="4x4"
-              speed={0.18}
+              speed={0.10}
               className="w-full h-full"
               minPixelRatio={1}
             />
           </div>
         </Suspense>
+
+        {/* ── Ambient radial glow — barely perceptible depth ────────────────── */}
+        <div
+          className="fixed inset-0 pointer-events-none z-0"
+          aria-hidden="true"
+          style={{
+            background:
+              'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(220,38,38,0.06) 0%, transparent 70%)',
+          }}
+        />
+
+        {/* ── App Content ───────────────────────────────────────────────────── */}
         <AuthProvider>
           <SmoothScroll />
           {children}
+
           <Toaster
             position="top-right"
+            gutter={10}
             toastOptions={{
               duration: 4000,
               style: {
-                background: '#0e0000',
-                color: '#fff',
-                borderRadius: '0px',
-                fontSize: '16px',
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.04em',
-                border: '2px solid rgba(255,0,0,0.5)',
-                boxShadow: '0 0 20px rgba(255,0,0,0.2)',
-                padding: '10px 16px',
+                background: 'rgba(12, 12, 14, 0.92)',
+                color: '#ffffff',
+                borderRadius: '10px',
+                fontSize: '13px',
+                fontFamily: 'var(--font-geist-sans), system-ui, sans-serif',
+                fontWeight: '450',
+                letterSpacing: '-0.01em',
+                border: '1px solid rgba(255, 255, 255, 0.09)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                boxShadow:
+                  '0 8px 32px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.07)',
+                padding: '11px 16px',
+                maxWidth: '360px',
               },
               success: {
-                iconTheme: { primary: '#FFCE00', secondary: '#000' },
+                iconTheme: { primary: '#EAB308', secondary: '#000' },
                 style: {
-                  border: '2px solid rgba(255,206,0,0.6)',
-                  boxShadow: '0 0 20px rgba(255,206,0,0.2)',
+                  border: '1px solid rgba(234, 179, 8, 0.30)',
+                  boxShadow:
+                    '0 8px 32px rgba(0,0,0,0.60), 0 0 16px rgba(234,179,8,0.12), inset 0 1px 0 rgba(255,255,255,0.07)',
                 },
               },
               error: {
-                iconTheme: { primary: '#FF0000', secondary: '#000' },
+                iconTheme: { primary: '#DC2626', secondary: '#fff' },
                 style: {
-                  border: '2px solid rgba(255,0,0,0.7)',
-                  boxShadow: '0 0 20px rgba(255,0,0,0.3)',
+                  border: '1px solid rgba(220, 38, 38, 0.35)',
+                  boxShadow:
+                    '0 8px 32px rgba(0,0,0,0.60), 0 0 16px rgba(220,38,38,0.15), inset 0 1px 0 rgba(255,255,255,0.07)',
                 },
+              },
+              loading: {
+                iconTheme: { primary: 'rgba(255,255,255,0.50)', secondary: 'transparent' },
               },
             }}
           />
