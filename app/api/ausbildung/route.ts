@@ -116,6 +116,11 @@ Find as many leads as possible, up to the number the user requested. Be thorough
   })
 
   if (!response.ok) {
+    if (response.status === 429) {
+      const quotaError = new Error('QUOTA_EXCEEDED') as Error & { isQuotaExceeded: boolean }
+      quotaError.isQuotaExceeded = true
+      throw quotaError
+    }
     const err = await response.text().catch(() => 'unknown')
     throw new Error(`Gemini API error ${response.status}: ${err.slice(0, 300)}`)
   }
@@ -186,6 +191,13 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = (err as Error).message || 'Search failed'
     console.error('[Ausbildung API]', message)
+
+    if (message === 'QUOTA_EXCEEDED' || (err as { isQuotaExceeded?: boolean }).isQuotaExceeded) {
+      return NextResponse.json(
+        { error: 'QUOTA_EXCEEDED', message: 'API quota exceeded. Please try again in a moment.' },
+        { status: 429 }
+      )
+    }
 
     if (message.includes('JSON')) {
       return NextResponse.json(
