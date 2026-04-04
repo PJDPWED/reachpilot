@@ -129,11 +129,25 @@ Find as many leads as possible, up to the number the user requested. Be thorough
   const text = candidate.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini returned empty response')
 
-  // Strip markdown code fences if present
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('No JSON found in Gemini response')
+  // Strip markdown fences
+  const stripped = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/gi, '')
+    .trim()
 
-  const parsed = JSON.parse(jsonMatch[0]) as AusbildungSearchResult
+  // Find outermost JSON object
+  const start = stripped.indexOf('{')
+  const end = stripped.lastIndexOf('}')
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error('No JSON object found in Gemini response')
+  }
+
+  let parsed: AusbildungSearchResult
+  try {
+    parsed = JSON.parse(stripped.slice(start, end + 1)) as AusbildungSearchResult
+  } catch (parseErr) {
+    throw new Error(`Gemini returned malformed JSON: ${(parseErr as Error).message}`)
+  }
 
   // Ensure each lead has a stable ID
   parsed.leads = parsed.leads.map((lead, idx) => ({

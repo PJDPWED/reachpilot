@@ -133,9 +133,27 @@ Perform a complete audit and return ONLY valid JSON (no markdown, no code blocks
   const text = candidate.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini returned empty response')
 
-  // Strip markdown code fences if present
-  const clean = text.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()
-  return JSON.parse(clean) as CVAnalysis
+  // Strip markdown fences anywhere in the response
+  let clean = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/gi, '')
+    .trim()
+
+  // Find the outermost JSON object
+  const start = clean.indexOf('{')
+  const end = clean.lastIndexOf('}')
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(`No valid JSON object found in Gemini response (length: ${text.length})`)
+  }
+  clean = clean.slice(start, end + 1)
+
+  try {
+    return JSON.parse(clean) as CVAnalysis
+  } catch (parseErr) {
+    // Last resort: truncate at last complete field and close the JSON
+    console.error('[CV Valuator] JSON parse failed, raw length:', clean.length)
+    throw new Error(`Gemini returned malformed JSON: ${(parseErr as Error).message}`)
+  }
 }
 
 // ─── Route Handler ────────────────────────────────────────────────────────────
