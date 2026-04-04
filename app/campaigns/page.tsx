@@ -178,7 +178,7 @@ export default function CampaignsPage() {
                       {[
                         { label: 'Leads',   value: total,   color: 'var(--text-secondary)' },
                         { label: 'Sent',    value: sent,    color: '#34d399' },
-                        { label: 'Replied', value: replied, color: '#a78bfa' },
+                        { label: 'Replied', value: replied, color: 'rgba(255,255,255,0.70)' },
                       ].map(({ label, value, color }) => (
                         <div key={label}>
                           <div className="text-base font-semibold tabular-nums" style={{ color }}>{value.toLocaleString()}</div>

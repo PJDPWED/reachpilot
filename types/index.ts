@@ -37,6 +37,7 @@ export interface Lead {
   scheduled_at: string | null
   sent_at: string | null
   retry_count: number
+  last_error: string | null
   created_at: string
 }
 

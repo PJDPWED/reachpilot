@@ -161,18 +161,22 @@ export async function processQueue(
 
       const newRetryCount = (lead.retry_count || 0) + 1
 
+      // Classify the error into a human-readable label
+      const classifiedError = classifyEmailError(errMsg)
+
       if (newRetryCount >= MAX_RETRIES) {
         // Permanent failure
         await db
           .from('leads')
-          .update({ status: 'failed', retry_count: newRetryCount })
+          .update({ status: 'failed', retry_count: newRetryCount, last_error: classifiedError })
           .eq('id', lead.id)
 
         await logEvent(
           lead.id,
-          `[FAILED] ${lead.email} — permanently failed after ${newRetryCount} attempts`,
+          `[FAILED] ${lead.email} — permanently failed after ${newRetryCount} attempts: ${classifiedError}`,
           {
             error: errMsg,
+            classified: classifiedError,
             email: lead.email,
             retry_count: newRetryCount,
             final: true,
@@ -183,7 +187,7 @@ export async function processQueue(
         const retryAt = new Date(Date.now() + 2 * 60 * 1000).toISOString()
         await db
           .from('leads')
-          .update({ status: 'queued', retry_count: newRetryCount, scheduled_at: retryAt })
+          .update({ status: 'queued', retry_count: newRetryCount, scheduled_at: retryAt, last_error: classifiedError })
           .eq('id', lead.id)
 
         await logEvent(
@@ -251,6 +255,55 @@ export async function resumeCampaign(campaignId: string): Promise<void> {
   const db = createServerSupabaseClient()
   await db.from('campaigns').update({ status: 'running' }).eq('id', campaignId)
   await logEvent(null, `Campaign ${campaignId} resumed`, { campaign_id: campaignId })
+}
+
+// ─── Error Classification ──────────────────────────────────────────────────────
+
+/**
+ * Turns a raw error message from Gmail/Resend into a short human-readable label
+ * that can be stored as `last_error` on the lead and shown in the UI.
+ */
+export function classifyEmailError(msg: string): string {
+  const m = msg.toLowerCase()
+
+  // Gmail errors
+  if (m.includes('no gmail tokens') || m.includes('sign in with google')) return 'Gmail: Not authenticated'
+  if (m.includes('re-authenticate') || m.includes('re-auth')) return 'Gmail: Re-authentication required'
+  if (m.includes('missing refresh token') || m.includes('missing_refresh_token')) return 'Gmail: Missing refresh token — re-login'
+  if (m.includes('token refresh failed') || m.includes('invalid_grant')) return 'Gmail: Token expired — re-login'
+  if (m.includes('insufficient permissions') || m.includes('403')) return 'Gmail: Insufficient permissions'
+  if (m.includes('rate limit exceeded') && m.includes('gmail')) return 'Gmail: Rate limit — slow down sending'
+  if (m.includes('daily') && m.includes('quota')) return 'Gmail: Daily quota exceeded'
+  if (m.includes('gmail') && m.includes('400')) return 'Gmail: Malformed email message'
+  if (m.includes('gmail api error')) {
+    const match = msg.match(/gmail api error[^:]*: (.{0,80})/i)
+    return `Gmail: ${match?.[1] ?? 'Unknown error'}`
+  }
+
+  // Resend errors
+  if (m.includes('invalid resend api key') || (m.includes('resend') && m.includes('401'))) return 'Resend: Invalid API key'
+  if (m.includes('resend domain not verified') || (m.includes('resend') && m.includes('403'))) return 'Resend: Domain not verified'
+  if (m.includes('resend') && m.includes('422')) return 'Resend: Invalid email or unverified domain'
+  if (m.includes('resend') && m.includes('429')) return 'Resend: Rate limit exceeded'
+  if (m.includes('resend api error')) {
+    const match = msg.match(/resend api error[^:]*: (.{0,80})/i)
+    return `Resend: ${match?.[1] ?? 'Unknown error'}`
+  }
+
+  // Both failed
+  if (m.includes('both providers failed')) {
+    // Try to extract Gmail and Resend parts
+    const gmailMatch = msg.match(/gmail:\s*(.+?)(?:\s*\||\s*resend:|$)/i)
+    if (gmailMatch) return `Gmail & Resend failed — ${gmailMatch[1].slice(0, 60)}`
+    return 'All providers failed — check Gmail auth & Resend config'
+  }
+
+  // Network / timeout
+  if (m.includes('fetch failed') || m.includes('econnrefused')) return 'Network error — server unreachable'
+  if (m.includes('timeout') || m.includes('timed out')) return 'Timeout — server too slow'
+
+  // Fallback: first 80 chars of raw message
+  return msg.slice(0, 80)
 }
 
 // ─── Logging ───────────────────────────────────────────────────────────────────

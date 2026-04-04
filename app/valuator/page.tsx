@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import {
   Paperclip, Send, X, FileText, Bot, User,
   RotateCcw, Sparkles, CheckCircle2, TrendingUp, Flag,
+  History, ChevronRight, Clock,
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -32,6 +33,16 @@ interface Message {
   timestamp: Date
 }
 
+interface HistoryItem {
+  id: string
+  score: number
+  grade: string
+  summary: string
+  language: 'en' | 'de' | 'fr'
+  file_name: string | null
+  created_at: string
+}
+
 // ─── Markdown renderer (simple) ──────────────────────────────────────────────
 
 function renderMarkdown(text: string): string {
@@ -46,33 +57,34 @@ function renderMarkdown(text: string): string {
     .replace(/\n/g, '<br />')
 }
 
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
 // ─── Score Ring ───────────────────────────────────────────────────────────────
 
-function ScoreRing({ score }: { score: number }) {
-  const radius = 44
+function ScoreRing({ score, size = 112 }: { score: number; size?: number }) {
+  const radius = size === 112 ? 44 : 22
+  const stroke = size === 112 ? 6 : 3.5
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (score / 100) * circumference
+  const center = size / 2
 
   return (
-    <div className="relative w-28 h-28 flex items-center justify-center">
-      <svg width="112" height="112" className="absolute inset-0 -rotate-90">
-        {/* Track */}
-        <circle
-          cx="56"
-          cy="56"
-          r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.08)"
-          strokeWidth="6"
-        />
-        {/* Progress */}
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="absolute inset-0 -rotate-90">
+        <circle cx={center} cy={center} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
         <motion.circle
-          cx="56"
-          cy="56"
-          r={radius}
+          cx={center} cy={center} r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.85)"
-          strokeWidth="6"
+          stroke="#ffffff"
+          strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
@@ -80,27 +92,26 @@ function ScoreRing({ score }: { score: number }) {
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
         />
       </svg>
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center z-10">
         <motion.span
-          className="text-3xl font-bold text-white"
-          style={{ fontFamily: 'var(--font-geist-sans)', letterSpacing: '-0.04em', lineHeight: 1 }}
+          className="font-bold text-white"
+          style={{
+            fontFamily: 'var(--font-geist-sans)',
+            letterSpacing: '-0.04em',
+            lineHeight: 1,
+            fontSize: size === 112 ? '30px' : '14px',
+          }}
           initial={{ opacity: 0, scale: 0.7 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           {score}
         </motion.span>
-        <span
-          style={{
-            fontFamily: 'var(--font-geist-mono)',
-            fontSize: '9px',
-            color: 'rgba(255,255,255,0.35)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
-        >
-          /100
-        </span>
+        {size === 112 && (
+          <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '9px', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            /100
+          </span>
+        )}
       </div>
     </div>
   )
@@ -143,7 +154,7 @@ function EvaluationCard({ evaluation }: { evaluation: CVEvaluation }) {
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       className="w-full max-w-2xl"
     >
-      {/* Header — Score ring + Grade */}
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -158,42 +169,15 @@ function EvaluationCard({ evaluation }: { evaluation: CVEvaluation }) {
             transition={{ duration: 0.4, delay: 0.25 }}
             className="flex items-baseline gap-2"
           >
-            <span
-              style={{
-                fontFamily: 'var(--font-geist-sans)',
-                fontSize: '52px',
-                fontWeight: 700,
-                color: '#ffffff',
-                letterSpacing: '-0.05em',
-                lineHeight: 1,
-              }}
-            >
+            <span style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '52px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.05em', lineHeight: 1 }}>
               {evaluation.grade}
             </span>
-            <span
-              style={{
-                fontFamily: 'var(--font-geist-mono)',
-                fontSize: '11px',
-                color: 'rgba(255,255,255,0.30)',
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-              }}
-            >
+            <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '11px', color: 'rgba(255,255,255,0.30)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Grade
             </span>
           </motion.div>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            style={{
-              fontFamily: 'var(--font-geist-sans)',
-              fontSize: '12px',
-              color: 'rgba(255,255,255,0.45)',
-              marginTop: '4px',
-              maxWidth: '240px',
-              lineHeight: 1.5,
-            }}
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+            style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginTop: '4px', maxWidth: '240px', lineHeight: 1.5 }}
           >
             {evaluation.language === 'de' ? 'German Market Score' : evaluation.language === 'fr' ? 'Score Marché Allemand' : 'German Market Score'}
           </motion.p>
@@ -209,22 +193,11 @@ function EvaluationCard({ evaluation }: { evaluation: CVEvaluation }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.15 + si * 0.08 }}
             className="rounded-2xl p-3.5"
-            style={{
-              background: section.accent,
-              border: `1px solid ${section.border}`,
-            }}
+            style={{ background: section.accent, border: `1px solid ${section.border}` }}
           >
             <div className="flex items-center gap-1.5 mb-2.5" style={{ color: section.iconColor }}>
               {section.icon}
-              <span
-                style={{
-                  fontFamily: 'var(--font-geist-sans)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: section.iconColor,
-                  letterSpacing: '0.02em',
-                }}
-              >
+              <span style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '11px', fontWeight: 600, color: section.iconColor, letterSpacing: '0.02em' }}>
                 {section.label}
               </span>
             </div>
@@ -235,14 +208,7 @@ function EvaluationCard({ evaluation }: { evaluation: CVEvaluation }) {
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.25 + si * 0.08 + i * 0.05 }}
-                  style={{
-                    fontFamily: 'var(--font-geist-sans)',
-                    fontSize: '12px',
-                    color: 'rgba(255,255,255,0.70)',
-                    lineHeight: 1.5,
-                    paddingLeft: '8px',
-                    borderLeft: `2px solid ${section.border}`,
-                  }}
+                  style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '12px', color: 'rgba(255,255,255,0.70)', lineHeight: 1.5, paddingLeft: '8px', borderLeft: `2px solid ${section.border}` }}
                 >
                   {item}
                 </motion.li>
@@ -258,19 +224,9 @@ function EvaluationCard({ evaluation }: { evaluation: CVEvaluation }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.45 }}
         className="rounded-2xl px-4 py-3"
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
-        <p
-          style={{
-            fontFamily: 'var(--font-geist-sans)',
-            fontSize: '13px',
-            color: 'rgba(255,255,255,0.65)',
-            lineHeight: 1.65,
-          }}
-        >
+        <p style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '13px', color: 'rgba(255,255,255,0.65)', lineHeight: 1.65 }}>
           {evaluation.summary}
         </p>
       </motion.div>
@@ -283,7 +239,6 @@ function EvaluationCard({ evaluation }: { evaluation: CVEvaluation }) {
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
 
-  // If assistant message has a structured evaluation, render the card
   if (!isUser && message.evaluation) {
     return (
       <motion.div
@@ -292,26 +247,12 @@ function MessageBubble({ message }: { message: Message }) {
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
         className="flex gap-3 flex-row"
       >
-        {/* Avatar */}
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1"
-          style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.12)',
-          }}
-        >
+        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
           <Bot size={12} style={{ color: 'rgba(255,255,255,0.70)' }} />
         </div>
         <div className="flex-1 min-w-0">
           <EvaluationCard evaluation={message.evaluation} />
-          <p
-            className="mt-2"
-            style={{
-              fontFamily: 'var(--font-geist-mono)',
-              fontSize: '10px',
-              color: 'rgba(255,255,255,0.20)',
-            }}
-          >
+          <p className="mt-2" style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '10px', color: 'rgba(255,255,255,0.20)' }}>
             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
@@ -326,57 +267,32 @@ function MessageBubble({ message }: { message: Message }) {
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
-      {/* Avatar */}
       <div
         className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1"
-        style={{
-          background: isUser
-            ? 'rgba(255,255,255,0.08)'
-            : 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.12)',
-        }}
+        style={{ background: isUser ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
       >
-        {isUser ? (
-          <User size={12} style={{ color: 'rgba(255,255,255,0.70)' }} />
-        ) : (
-          <Bot size={12} style={{ color: 'rgba(255,255,255,0.70)' }} />
-        )}
+        {isUser ? <User size={12} style={{ color: 'rgba(255,255,255,0.70)' }} /> : <Bot size={12} style={{ color: 'rgba(255,255,255,0.70)' }} />}
       </div>
 
-      {/* Bubble */}
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-3 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
         style={{
-          background: isUser
-            ? 'rgba(255,255,255,0.07)'
-            : 'rgba(255,255,255,0.04)',
+          background: isUser ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)',
           border: `1px solid ${isUser ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.07)'}`,
         }}
       >
-        {/* File attachment chip */}
         {message.file && (
-          <div
-            className="flex items-center gap-2 mb-2 px-2.5 py-1.5 rounded-lg"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
+          <div className="flex items-center gap-2 mb-2 px-2.5 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
             <FileText size={11} style={{ color: 'rgba(255,255,255,0.55)' }} />
-            <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '11px', color: 'rgba(255,255,255,0.60)' }}>
-              {message.file.name}
-            </span>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.30)' }}>
-              {(message.file.size / 1024).toFixed(0)}KB
-            </span>
+            <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '11px', color: 'rgba(255,255,255,0.60)' }}>{message.file.name}</span>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.30)' }}>{(message.file.size / 1024).toFixed(0)}KB</span>
           </div>
         )}
 
-        {/* Text content */}
         {message.content === '...' ? (
           <div className="flex gap-1 items-center py-1">
             {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.40)' }}
+              <motion.div key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.40)' }}
                 animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
                 transition={{ duration: 1.0, repeat: Infinity, delay: i * 0.18 }}
               />
@@ -385,28 +301,124 @@ function MessageBubble({ message }: { message: Message }) {
         ) : (
           <div
             className="text-sm leading-relaxed"
-            style={{
-              fontFamily: 'var(--font-geist-sans)',
-              color: isUser ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.75)',
-              fontSize: '13.5px',
-              lineHeight: '1.65',
-            }}
+            style={{ fontFamily: 'var(--font-geist-sans)', color: isUser ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.75)', fontSize: '13.5px', lineHeight: '1.65' }}
             dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
           />
         )}
 
-        {/* Timestamp */}
-        <p
-          className="mt-1.5"
-          style={{
-            fontFamily: 'var(--font-geist-mono)',
-            fontSize: '10px',
-            color: 'rgba(255,255,255,0.20)',
-            textAlign: isUser ? 'right' : 'left',
-          }}
-        >
+        <p className="mt-1.5" style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '10px', color: 'rgba(255,255,255,0.20)', textAlign: isUser ? 'right' : 'left' }}>
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── History Sidebar ─────────────────────────────────────────────────────────
+
+function HistorySidebar({
+  items,
+  loading,
+  onSelect,
+  onClose,
+}: {
+  items: HistoryItem[]
+  loading: boolean
+  onSelect: (id: string) => void
+  onClose: () => void
+}) {
+  const gradeColor = (g: string) => {
+    if (g.startsWith('A')) return '#86efac'
+    if (g.startsWith('B')) return '#93c5fd'
+    if (g.startsWith('C')) return '#fbbf24'
+    return '#f87171'
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col h-full"
+      style={{
+        width: '260px',
+        minWidth: '260px',
+        borderLeft: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(255,255,255,0.015)',
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-4 py-3 shrink-0"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+      >
+        <div className="flex items-center gap-2">
+          <History size={13} style={{ color: 'rgba(255,255,255,0.40)' }} />
+          <span style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.70)', letterSpacing: '-0.01em' }}>
+            Recent Evaluations
+          </span>
+        </div>
+        <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded opacity-40 hover:opacity-80 transition-opacity">
+          <X size={12} style={{ color: '#ffffff' }} />
+        </button>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto py-2">
+        {loading ? (
+          <div className="flex flex-col gap-2 px-3 py-4">
+            {[0, 1, 2].map((i) => (
+              <motion.div key={i} className="h-14 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}
+                animate={{ opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+              />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '12px', color: 'rgba(255,255,255,0.25)' }}>
+              No evaluations yet.<br />Upload a CV to get started.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1 px-2">
+            {items.map((item, i) => (
+              <motion.button
+                key={item.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                onClick={() => onSelect(item.id)}
+                className="w-full text-left px-3 py-2.5 rounded-xl transition-all group"
+                style={{ background: 'transparent' }}
+                onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'}
+                onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    {/* Mini score ring */}
+                    <ScoreRing score={item.score} size={40} />
+                    <span style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '16px', fontWeight: 700, color: gradeColor(item.grade), letterSpacing: '-0.03em' }}>
+                      {item.grade}
+                    </span>
+                  </div>
+                  <ChevronRight size={11} className="opacity-0 group-hover:opacity-40 transition-opacity" style={{ color: '#ffffff' }} />
+                </div>
+                {item.file_name && (
+                  <p className="truncate" style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>
+                    {item.file_name}
+                  </p>
+                )}
+                <div className="flex items-center gap-1 mt-0.5">
+                  <Clock size={9} style={{ color: 'rgba(255,255,255,0.20)' }} />
+                  <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '9px', color: 'rgba(255,255,255,0.20)' }}>
+                    {relativeTime(item.created_at)}
+                  </span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   )
@@ -415,7 +427,7 @@ function MessageBubble({ message }: { message: Message }) {
 // ─── Starter Prompts ─────────────────────────────────────────────────────────
 
 const STARTER_PROMPTS = [
-  'Upload your CV and I\'ll analyze it for the German job market',
+  "Upload your CV and I'll analyze it for the German job market",
   'What ATS keywords are essential for German Ausbildung applications?',
   'How should a Moroccan candidate format their Lebenslauf?',
   'What are the biggest mistakes in German job applications?',
@@ -428,13 +440,16 @@ export default function ValuatorPage() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Hallo! I\'m your German career coach. Upload your CV and I\'ll analyze it for the German job market — scoring your strengths, highlighting weaknesses, and generating ATS keywords for Ausbildung applications.\n\nYou can also ask me questions about German applications without uploading a file.',
+      content: "Hallo! I'm your German career coach. Upload your CV and I'll analyze it for the German job market — scoring your strengths, highlighting weaknesses, and generating ATS keywords for Ausbildung applications.\n\nYou can also ask me questions about German applications without uploading a file.",
       timestamp: new Date(),
     },
   ])
   const [input, setInput] = useState('')
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [history, setHistory] = useState<HistoryItem[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const streamingIdRef = useRef<string | null>(null)
@@ -446,6 +461,58 @@ export default function ValuatorPage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch('/api/valuator/history')
+      const json = await res.json()
+      if (json.success) setHistory(json.data)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
+
+  const handleToggleHistory = () => {
+    if (!showHistory) {
+      loadHistory()
+    }
+    setShowHistory((v) => !v)
+  }
+
+  const handleSelectHistory = async (id: string) => {
+    try {
+      const res = await fetch(`/api/valuator/history/${id}`)
+      const json = await res.json()
+      if (!json.success) return
+
+      const ev = json.data
+      const evalObj: CVEvaluation = {
+        type: 'evaluation',
+        score: ev.score,
+        grade: ev.grade,
+        strengths: ev.strengths,
+        improvements: ev.improvements,
+        ausbildung_tips: ev.ausbildung_tips,
+        summary: ev.summary,
+        language: ev.language,
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `history-${id}`,
+          role: 'assistant',
+          content: '',
+          evaluation: evalObj,
+          timestamp: new Date(ev.created_at),
+        },
+      ])
+      setShowHistory(false)
+    } catch {
+      toast.error('Failed to load evaluation')
+    }
+  }
 
   // File drop
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -518,16 +585,12 @@ export default function ValuatorPage() {
         throw new Error(err.message || 'Request failed')
       }
 
-      // Replace thinking bubble with empty assistant message, then stream into it
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === 'thinking'
-            ? { ...m, id: assistantId, content: '' }
-            : m
+          m.id === 'thinking' ? { ...m, id: assistantId, content: '' } : m
         )
       )
 
-      // Stream text chunks
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let accumulated = ''
@@ -545,9 +608,8 @@ export default function ValuatorPage() {
         )
       }
 
-      // After stream completes — try to parse as structured evaluation
+      // Try to parse as structured evaluation
       const trimmed = accumulated.trim()
-      // Strip possible markdown code fences
       const jsonStr = trimmed.startsWith('```')
         ? trimmed.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim()
         : trimmed
@@ -562,9 +624,38 @@ export default function ValuatorPage() {
                 : m
             )
           )
+
+          // Auto-save to history (fire-and-forget)
+          fetch('/api/valuator/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...parsed,
+              file_name: fileToSend?.name ?? null,
+            }),
+          })
+            .then((r) => r.json())
+            .then((json) => {
+              if (json.success) {
+                // Refresh history list if sidebar is open
+                setHistory((prev) => [
+                  {
+                    id: json.data.id,
+                    score: parsed.score,
+                    grade: parsed.grade,
+                    summary: parsed.summary,
+                    language: parsed.language,
+                    file_name: fileToSend?.name ?? null,
+                    created_at: json.data.created_at,
+                  },
+                  ...prev,
+                ])
+              }
+            })
+            .catch(() => {/* ignore save failure */})
         }
       } catch {
-        // Not JSON — keep plain text rendering, no action needed
+        // Not JSON — plain text, no action
       }
     } catch (err) {
       toast.error((err as Error).message || 'Something went wrong. Please try again.')
@@ -586,7 +677,7 @@ export default function ValuatorPage() {
     setMessages([{
       id: 'welcome',
       role: 'assistant',
-      content: 'Hallo! I\'m your German career coach. Upload your CV and I\'ll analyze it for the German job market.\n\nYou can also ask me questions about German applications without uploading a file.',
+      content: "Hallo! I'm your German career coach. Upload your CV and I'll analyze it for the German job market.\n\nYou can also ask me questions about German applications without uploading a file.",
       timestamp: new Date(),
     }])
     setAttachedFile(null)
@@ -596,236 +687,194 @@ export default function ValuatorPage() {
   return (
     <AppShell>
       <div
-        className="flex flex-col"
+        className="flex"
         style={{ height: 'calc(100dvh - 64px)' }}
         {...getRootProps()}
       >
-        {/* Drag overlay */}
-        <AnimatePresence>
-          {isDragActive && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-              style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
-            >
-              <div
-                className="flex flex-col items-center gap-3 p-8 rounded-2xl"
-                style={{ border: '2px dashed rgba(255,255,255,0.30)', background: 'rgba(255,255,255,0.04)' }}
-              >
-                <Paperclip size={28} style={{ color: 'rgba(255,255,255,0.60)' }} />
-                <p className="text-white font-medium">Drop your CV here</p>
-                <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: '12px' }}>PDF, DOC, DOCX, TXT</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-4 py-3 shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
-        >
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
-            >
-              <Sparkles size={13} style={{ color: 'rgba(255,255,255,0.70)' }} />
-            </div>
-            <div>
-              <h1
-                style={{
-                  fontFamily: 'var(--font-geist-sans)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#ffffff',
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1,
-                }}
-              >
-                CV Valuator
-              </h1>
-              <p
-                style={{
-                  fontFamily: 'var(--font-geist-mono)',
-                  fontSize: '10px',
-                  color: 'rgba(255,255,255,0.28)',
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                German Market Analysis
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors"
-            style={{
-              fontFamily: 'var(--font-geist-sans)',
-              fontSize: '11px',
-              color: 'rgba(255,255,255,0.35)',
-              border: '1px solid rgba(255,255,255,0.07)',
-            }}
-          >
-            <RotateCcw size={10} />
-            New chat
-          </button>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          {/* Starter prompts — show only if just the welcome message */}
-          {messages.length === 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2"
-            >
-              {STARTER_PROMPTS.map((prompt, i) => (
-                <button
-                  key={i}
-                  onClick={() => setInput(prompt)}
-                  className="text-left px-3 py-2.5 rounded-xl transition-all text-xs leading-snug"
-                  style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    color: 'rgba(255,255,255,0.50)',
-                    fontFamily: 'var(--font-geist-sans)',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'
-                    ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.80)'
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.03)'
-                    ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.50)'
-                  }}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </motion.div>
-          )}
-
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input bar — pinned to bottom */}
-        <div
-          className="shrink-0 px-4 py-3"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
-        >
-          {/* Attached file chip */}
+        {/* ── Main chat area ── */}
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Drag overlay */}
           <AnimatePresence>
-            {attachedFile && (
+            {isDragActive && (
               <motion.div
-                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginBottom: 8 }}
-                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl w-fit"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+                style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
               >
-                <FileText size={12} style={{ color: 'rgba(255,255,255,0.60)' }} />
-                <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '11px', color: 'rgba(255,255,255,0.70)' }}>
-                  {attachedFile.name}
-                </span>
-                <button
-                  onClick={() => setAttachedFile(null)}
-                  className="ml-1 hover:opacity-100 opacity-50 transition-opacity"
-                >
-                  <X size={11} style={{ color: 'rgba(255,255,255,0.70)' }} />
-                </button>
+                <div className="flex flex-col items-center gap-3 p-8 rounded-2xl" style={{ border: '2px dashed rgba(255,255,255,0.30)', background: 'rgba(255,255,255,0.04)' }}>
+                  <Paperclip size={28} style={{ color: 'rgba(255,255,255,0.60)' }} />
+                  <p className="text-white font-medium">Drop your CV here</p>
+                  <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: '12px' }}>PDF, DOC, DOCX, TXT</p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Input row */}
+          {/* Header */}
           <div
-            className="flex items-end gap-2 rounded-2xl px-3 py-2"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.10)',
-            }}
+            className="flex items-center justify-between px-4 py-3 shrink-0"
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
           >
-            {/* File attach button */}
-            <label className="cursor-pointer shrink-0 mb-1">
-              <input {...getInputProps()} style={{ display: 'none' }} />
-              <div
-                className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-                style={{ color: 'rgba(255,255,255,0.35)' }}
-                onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.color = 'rgba(255,255,255,0.80)'}
-                onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.color = 'rgba(255,255,255,0.35)'}
-              >
-                <Paperclip size={15} />
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
+                <Sparkles size={13} style={{ color: 'rgba(255,255,255,0.70)' }} />
               </div>
-            </label>
-
-            {/* Text input */}
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={attachedFile ? 'Add a message or just press send...' : 'Ask about German CVs or attach your file...'}
-              rows={1}
-              className="flex-1 bg-transparent resize-none outline-none text-sm leading-relaxed"
-              style={{
-                fontFamily: 'var(--font-geist-sans)',
-                fontSize: '13.5px',
-                color: '#ffffff',
-                maxHeight: '120px',
-              }}
-              onInput={(e) => {
-                const el = e.currentTarget
-                el.style.height = 'auto'
-                el.style.height = `${Math.min(el.scrollHeight, 120)}px`
-              }}
-            />
-
-            {/* Send button */}
-            <motion.button
-              onClick={handleSend}
-              disabled={(!input.trim() && !attachedFile) || isStreaming}
-              className="shrink-0 mb-1 w-8 h-8 flex items-center justify-center rounded-lg transition-all"
-              style={{
-                background: (input.trim() || attachedFile) && !isStreaming
-                  ? '#ffffff'
-                  : 'rgba(255,255,255,0.08)',
-                color: (input.trim() || attachedFile) && !isStreaming
-                  ? '#000000'
-                  : 'rgba(255,255,255,0.25)',
-              }}
-              whileHover={(input.trim() || attachedFile) && !isStreaming ? { scale: 1.05 } : {}}
-              whileTap={(input.trim() || attachedFile) && !isStreaming ? { scale: 0.95 } : {}}
-            >
-              {isStreaming ? (
-                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Send size={13} />
-              )}
-            </motion.button>
+              <div>
+                <h1 style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '14px', fontWeight: 600, color: '#ffffff', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                  CV Valuator
+                </h1>
+                <p style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '10px', color: 'rgba(255,255,255,0.28)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  German Market Analysis
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* History toggle */}
+              <button
+                onClick={handleToggleHistory}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all"
+                style={{
+                  fontFamily: 'var(--font-geist-sans)',
+                  fontSize: '11px',
+                  color: showHistory ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.35)',
+                  border: showHistory ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(255,255,255,0.07)',
+                  background: showHistory ? 'rgba(255,255,255,0.07)' : 'transparent',
+                }}
+              >
+                <History size={11} />
+                History
+              </button>
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors"
+                style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '11px', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <RotateCcw size={10} />
+                New chat
+              </button>
+            </div>
           </div>
 
-          <p
-            className="text-center mt-2"
-            style={{
-              fontFamily: 'var(--font-geist-mono)',
-              fontSize: '10px',
-              color: 'rgba(255,255,255,0.18)',
-              letterSpacing: '0.04em',
-            }}
-          >
-            Powered by Gemini 2.0 Flash · German Market Specialist
-          </p>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            {messages.length === 1 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2"
+              >
+                {STARTER_PROMPTS.map((prompt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setInput(prompt)}
+                    className="text-left px-3 py-2.5 rounded-xl transition-all text-xs leading-snug"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.50)', fontFamily: 'var(--font-geist-sans)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.80)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.50)' }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input bar */}
+          <div className="shrink-0 px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+            <AnimatePresence>
+              {attachedFile && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginBottom: 8 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl w-fit"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+                >
+                  <FileText size={12} style={{ color: 'rgba(255,255,255,0.60)' }} />
+                  <span style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '11px', color: 'rgba(255,255,255,0.70)' }}>{attachedFile.name}</span>
+                  <button onClick={() => setAttachedFile(null)} className="ml-1 hover:opacity-100 opacity-50 transition-opacity">
+                    <X size={11} style={{ color: 'rgba(255,255,255,0.70)' }} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div
+              className="flex items-end gap-2 rounded-2xl px-3 py-2"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+            >
+              <label className="cursor-pointer shrink-0 mb-1">
+                <input {...getInputProps()} style={{ display: 'none' }} />
+                <div
+                  className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.color = 'rgba(255,255,255,0.80)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.color = 'rgba(255,255,255,0.35)'}
+                >
+                  <Paperclip size={15} />
+                </div>
+              </label>
+
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={attachedFile ? 'Add a message or just press send...' : 'Ask about German CVs or attach your file...'}
+                rows={1}
+                className="flex-1 bg-transparent resize-none outline-none text-sm leading-relaxed"
+                style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '13.5px', color: '#ffffff', maxHeight: '120px' }}
+                onInput={(e) => {
+                  const el = e.currentTarget
+                  el.style.height = 'auto'
+                  el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+                }}
+              />
+
+              <motion.button
+                onClick={handleSend}
+                disabled={(!input.trim() && !attachedFile) || isStreaming}
+                className="shrink-0 mb-1 w-8 h-8 flex items-center justify-center rounded-lg transition-all"
+                style={{
+                  background: (input.trim() || attachedFile) && !isStreaming ? '#ffffff' : 'rgba(255,255,255,0.08)',
+                  color: (input.trim() || attachedFile) && !isStreaming ? '#000000' : 'rgba(255,255,255,0.25)',
+                }}
+                whileHover={(input.trim() || attachedFile) && !isStreaming ? { scale: 1.05 } : {}}
+                whileTap={(input.trim() || attachedFile) && !isStreaming ? { scale: 0.95 } : {}}
+              >
+                {isStreaming ? (
+                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Send size={13} />
+                )}
+              </motion.button>
+            </div>
+
+            <p className="text-center mt-2" style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '10px', color: 'rgba(255,255,255,0.18)', letterSpacing: '0.04em' }}>
+              Powered by Gemini 2.0 Flash · German Market Specialist
+            </p>
+          </div>
         </div>
+
+        {/* ── History Sidebar ── */}
+        <AnimatePresence>
+          {showHistory && (
+            <HistorySidebar
+              items={history}
+              loading={historyLoading}
+              onSelect={handleSelectHistory}
+              onClose={() => setShowHistory(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </AppShell>
   )

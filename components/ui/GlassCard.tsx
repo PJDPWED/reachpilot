@@ -31,7 +31,7 @@ export function GlassCard({
       className={cn(
         'backdrop-blur-xl bg-black/40 border border-white/10',
         paddings[padding],
-        glow && 'border-[rgba(99,102,241,0.25)] shadow-glow-accent',
+        glow && 'border-white/20',
         className
       )}
       whileHover={hover ? { y: -2, scale: 1.003 } : undefined}

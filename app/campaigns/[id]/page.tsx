@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Play, Pause, ArrowLeft, RefreshCw, Clock,
   Send, XCircle, MessageSquare, Eye,
-  Activity, Zap, Shield, AlertTriangle, CheckCircle2,
+  Activity, Zap, Shield, AlertTriangle, CheckCircle2, Info,
 } from 'lucide-react'
 import { formatDateTime, formatRelative, truncate } from '@/utils/helpers'
 import toast from 'react-hot-toast'
@@ -21,6 +21,63 @@ interface CampaignData {
   campaign: Campaign
   leads: Lead[]
   logs: Log[]
+}
+
+// ─── Error Pill ───────────────────────────────────────────────────────────────
+
+function ErrorPill({ error }: { error: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative inline-flex">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-5 h-5 flex items-center justify-center rounded"
+        style={{ color: '#f87171' }}
+        title={error}
+      >
+        <Info size={11} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full left-1/2 z-50 mb-1.5"
+            style={{ transform: 'translateX(-50%)', width: '220px' }}
+            onMouseLeave={() => setOpen(false)}
+          >
+            <div
+              className="px-3 py-2 rounded-xl text-xs leading-snug"
+              style={{
+                background: 'rgba(20,8,8,0.95)',
+                border: '1px solid rgba(248,113,113,0.30)',
+                color: '#fca5a5',
+                fontFamily: 'var(--font-geist-mono)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+              }}
+            >
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle size={10} className="shrink-0 mt-0.5" style={{ color: '#f87171' }} />
+                {error}
+              </div>
+            </div>
+            {/* Arrow */}
+            <div
+              className="absolute left-1/2 bottom-0 translate-x-[-50%] translate-y-full"
+              style={{
+                width: 0, height: 0,
+                borderLeft: '5px solid transparent',
+                borderRight: '5px solid transparent',
+                borderTop: '5px solid rgba(248,113,113,0.30)',
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 export default function CampaignDetailPage() {
@@ -120,7 +177,7 @@ export default function CampaignDetailPage() {
               {[0, 1, 2, 3].map((i) => (
                 <motion.div
                   key={i}
-                  style={{ width: 4, height: 4, background: 'var(--accent)', imageRendering: 'pixelated' }}
+                  style={{ width: 4, height: 4, background: 'rgba(255,255,255,0.65)' }}
                   animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.2, 0.8] }}
                   transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
                 />
@@ -286,7 +343,7 @@ export default function CampaignDetailPage() {
         {[
           { label: 'Sent',    value: sentCount,    icon: Send,          color: '#34d399', delay: 0    },
           { label: 'Failed',  value: failedCount,  icon: XCircle,       color: '#f87171', delay: 0.06 },
-          { label: 'Replies', value: repliedCount, icon: MessageSquare, color: '#a78bfa', delay: 0.12 },
+          { label: 'Replies', value: repliedCount, icon: MessageSquare, color: 'rgba(255,255,255,0.70)', delay: 0.12 },
           { label: 'Pending', value: pendingCount, icon: Clock,         color: '#60a5fa', delay: 0.18 },
         ].map(({ label, value, icon: Icon, color, delay }) => (
           <FadeIn key={label} delay={delay} direction="up">
@@ -334,7 +391,7 @@ export default function CampaignDetailPage() {
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Zap size={13} style={{ color: 'var(--accent-light)' }} />
+                <Zap size={13} style={{ color: 'rgba(255,255,255,0.65)' }} />
                 <span
                   className="text-sm font-medium text-white"
                   style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}
@@ -399,7 +456,7 @@ export default function CampaignDetailPage() {
             >
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2" style={{ background: '#34d399', imageRendering: 'pixelated' }} />
-                <Send size={13} style={{ color: 'var(--accent-light)' }} />
+                <Send size={13} style={{ color: 'rgba(255,255,255,0.65)' }} />
                 <h3
                   className="text-sm font-semibold text-white"
                   style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', letterSpacing: '0.05em', textTransform: 'uppercase' }}
@@ -462,7 +519,12 @@ export default function CampaignDetailPage() {
                         {lead.email}
                       </td>
                       <td className="px-4 py-2.5">
-                        <StatusBadge status={lead.status} size="sm" />
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge status={lead.status} size="sm" />
+                          {lead.status === 'failed' && lead.last_error && (
+                            <ErrorPill error={lead.last_error} />
+                          )}
+                        </div>
                       </td>
                       <td
                         className="px-4 py-2.5 text-xs"
@@ -479,7 +541,7 @@ export default function CampaignDetailPage() {
                           onClick={() => { setSelectedLead(lead); setSpamResult(null) }}
                           className="w-6 h-6 flex items-center justify-center rounded"
                           style={{ color: 'var(--text-muted)' }}
-                          whileHover={{ scale: 1.2, color: 'var(--accent-light)' as string }}
+                          whileHover={{ scale: 1.2, color: 'rgba(255,255,255,0.65)' as string }}
                           whileTap={{ scale: 0.9 }}
                         >
                           <Eye size={12} />
@@ -516,7 +578,7 @@ export default function CampaignDetailPage() {
                   animate={{ opacity: [1, 0.3, 1] }}
                   transition={{ duration: 1.4, repeat: Infinity }}
                 />
-                <Activity size={13} style={{ color: 'var(--accent-light)' }} />
+                <Activity size={13} style={{ color: 'rgba(255,255,255,0.65)' }} />
                 <h3
                   className="text-sm font-semibold text-white"
                   style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', letterSpacing: '0.05em', textTransform: 'uppercase' }}
@@ -528,11 +590,11 @@ export default function CampaignDetailPage() {
                 onClick={() => setAutoRefresh(!autoRefresh)}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all"
                 style={{
-                  background: autoRefresh ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)',
+                  background: autoRefresh ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.04)',
                   border: autoRefresh
-                    ? '1px solid rgba(99,102,241,0.3)'
+                    ? '1px solid rgba(255,255,255,0.22)'
                     : '1px solid rgba(255,255,255,0.06)',
-                  color: autoRefresh ? 'var(--accent-light)' : 'var(--text-muted)',
+                  color: autoRefresh ? '#ffffff' : 'var(--text-muted)',
                   fontFamily: "'JetBrains Mono', monospace",
                   borderRadius: 3,
                 }}
@@ -566,8 +628,7 @@ export default function CampaignDetailPage() {
                               ? '#fbbf24'
                               : log.event.includes('sent')
                               ? '#34d399'
-                              : 'var(--accent)',
-                            imageRendering: 'pixelated',
+                              : 'rgba(255,255,255,0.50)',
                           }}
                         />
                         <div className="flex-1 min-w-0">
@@ -697,9 +758,9 @@ export default function CampaignDetailPage() {
                   disabled={spamLoading}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium"
                   style={{
-                    background: 'rgba(99,102,241,0.12)',
-                    border: '1px solid rgba(99,102,241,0.25)',
-                    color: 'var(--accent-light)',
+                    background: 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    color: 'rgba(255,255,255,0.75)',
                     fontFamily: "'JetBrains Mono', monospace",
                     borderRadius: 4,
                     opacity: spamLoading ? 0.6 : 1,
