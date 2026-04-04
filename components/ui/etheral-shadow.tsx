@@ -50,7 +50,7 @@ function useInstanceId(): string {
 
 export function EtheralShadow({
   sizing = 'fill',
-  color = 'rgba(220, 38, 38, 0.60)',
+  color = 'rgba(255, 255, 255, 0.12)',
   animation,
   noise,
   style,
@@ -125,16 +125,20 @@ export function EtheralShadow({
           </svg>
         )}
 
-        {/* Shadow shape — uses a neutral SVG mask to avoid external image dependency */}
+        {/* Shadow shape — Framer CDN mask for silky/wavy ripple texture */}
         <div
           style={{
             backgroundColor: color,
-            borderRadius: '50%',
-            filter: 'blur(60px)',
-            width: '80%',
-            height: '80%',
-            margin: '10%',
-            opacity: 0.85,
+            maskImage: `url('https://framerusercontent.com/images/ceBGguIpUU8luwByxuQz79t7To.png')`,
+            WebkitMaskImage: `url('https://framerusercontent.com/images/ceBGguIpUU8luwByxuQz79t7To.png')`,
+            maskSize: sizing === 'stretch' ? '100% 100%' : 'cover',
+            WebkitMaskSize: sizing === 'stretch' ? '100% 100%' : 'cover',
+            maskRepeat: 'no-repeat',
+            WebkitMaskRepeat: 'no-repeat',
+            maskPosition: 'center',
+            WebkitMaskPosition: 'center',
+            width: '100%',
+            height: '100%',
           }}
         />
       </div>
