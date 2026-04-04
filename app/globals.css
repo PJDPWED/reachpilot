@@ -46,6 +46,11 @@
   --text-muted:     rgba(255, 255, 255, 0.28);
   --text-disabled:  rgba(255, 255, 255, 0.14);
 
+  /* Monochrome accent */
+  --accent:     #ffffff;
+  --accent-dim: rgba(255,255,255,0.12);
+  --accent-mid: rgba(255,255,255,0.30);
+
   /* Motion */
   --ease-spring:   cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out:      cubic-bezier(0.0, 0.0, 0.2, 1);
@@ -113,17 +118,17 @@
     border-radius: 99px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(220, 38, 38, 0.45);
+    background: rgba(255, 255, 255, 0.25);
   }
 
   ::selection {
-    background: rgba(220, 38, 38, 0.30);
+    background: rgba(255, 255, 255, 0.15);
     color: #fff;
   }
 
   /* Focus ring — accessible, branded */
   :focus-visible {
-    outline: 2px solid rgba(220, 38, 38, 0.60);
+    outline: 2px solid rgba(255, 255, 255, 0.50);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -202,13 +207,13 @@
     transform: translateY(-1px);
   }
 
-  /* Red accent variant — for active/selected states */
+  /* White accent variant — for active/selected states */
   .glass-card-red {
     @apply glass-card;
-    border-color: rgba(220, 38, 38, 0.25);
+    border-color: rgba(255, 255, 255, 0.18);
     box-shadow:
       0 4px 24px rgba(0,0,0,0.50),
-      0 0 0 1px rgba(220,38,38,0.10),
+      0 0 0 1px rgba(255,255,255,0.08),
       inset 0 1px 0 rgba(255,255,255,0.06);
   }
 
@@ -259,18 +264,18 @@
   .btn-lg  { height: 44px; padding: 0 22px; font-size: 14px; border-radius: 10px; }
   .btn-xl  { height: 52px; padding: 0 28px; font-size: 15px; border-radius: 12px; }
 
-  /* Primary — solid red fill */
+  /* Primary — solid white fill */
   .btn-primary {
     @apply btn;
-    background: var(--red-full);
-    border-color: rgba(239, 68, 68, 0.60);
-    color: #ffffff;
+    background: #ffffff;
+    border-color: rgba(255, 255, 255, 0.30);
+    color: #000000;
     font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.30), 0 0 0 1px rgba(239,68,68,0.20) inset;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.20);
   }
   .btn-primary:hover {
-    background: #b91c1c;
-    box-shadow: 0 0 16px rgba(220,38,38,0.40), 0 1px 3px rgba(0,0,0,0.30);
+    background: rgba(255,255,255,0.88);
+    box-shadow: 0 0 24px rgba(255,255,255,0.15), 0 1px 3px rgba(0,0,0,0.30);
   }
 
   /* Secondary — glass fill */
@@ -597,6 +602,11 @@
   /* Hide scrollbar — used in mobile nav overflow-x-auto row */
   .scrollbar-none { scrollbar-width: none; }
   .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  @keyframes moveBackground {
+    from { background-position: 0% 0%; }
+    to   { background-position: 0% -1000%; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
