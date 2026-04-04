@@ -61,13 +61,11 @@ async function callGeminiRaw(
   })
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => 'unknown error')
-    let reason = `HTTP ${response.status}`
-    if (response.status === 400) reason = 'Bad request — check API key or model name'
-    if (response.status === 403) reason = 'API key invalid or quota exceeded'
-    if (response.status === 429) reason = 'Rate limit hit — slow down requests'
-    if (response.status === 500) reason = 'Gemini service error — retry later'
-    throw new Error(`Gemini API error (${reason}): ${errorBody.slice(0, 200)}`)
+    const errorText = await response.text().catch(() => '')
+    if (response.status === 429) {
+      throw new Error('QUOTA_EXCEEDED: Gemini API quota exceeded. Please try again later.')
+    }
+    throw new Error(`Gemini API error ${response.status}: ${errorText.slice(0, 300)}`)
   }
 
   const data = await response.json()
@@ -107,13 +105,11 @@ async function callGemini(
     return await callGeminiRaw(model, systemPrompt, userPrompt, options)
   } catch (err) {
     const msg = (err as Error).message || ''
-    // Only fall back on model-not-found or quota errors, not on safety/content blocks
+    // Only fall back on model-not-found errors, not on quota/rate-limit (surface those to UI)
     const shouldFallback =
       msg.includes('404') ||
       msg.includes('not found') ||
-      msg.includes('not supported') ||
-      msg.includes('quota') ||
-      msg.includes('429')
+      msg.includes('not supported')
 
     if (shouldFallback && model !== FALLBACK_MODEL) {
       console.warn(`[Gemini] ${model} failed (${msg.slice(0, 80)}), falling back to ${FALLBACK_MODEL}`)
