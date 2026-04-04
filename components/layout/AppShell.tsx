@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
-import { AmbientBackground } from '@/components/background/AmbientBackground'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
@@ -38,9 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div
         className="flex items-center justify-center min-h-dvh"
-        style={{ background: '#000000' }}
       >
-        <AmbientBackground />
         <motion.div
           className="flex flex-col items-center gap-5 relative z-10"
           initial={{ opacity: 0 }}
@@ -71,11 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (!session) return null
 
   return (
-    <div
-      className="relative min-h-dvh"
-      style={{ background: '#000000' }}
-    >
-      <AmbientBackground />
+    <div className="relative min-h-dvh">
       <Sidebar />
       <main className="flex-1 md:ml-[220px] min-h-dvh relative z-10 pb-20 md:pb-0">
         <div className="w-full px-4 md:px-8 py-8">

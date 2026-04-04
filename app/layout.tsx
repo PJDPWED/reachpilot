@@ -23,15 +23,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
       className={`${GeistSans.variable} ${GeistMono.variable}`}
     >
-      <body className="relative antialiased" style={{ background: '#050508' }}>
+      <body className="relative antialiased" style={{ background: '#0a0a0f' }}>
 
-        {/* ── Global Etheral Shadow Background ─────────────────────────────────── */}
+        {/* ── Global Animated Background ───────────────────────────────────────── */}
         <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
           <EtheralShadow
-            color="rgba(255, 255, 255, 0.18)"
-            animation={{ scale: 70, speed: 20 }}
-            noise={{ opacity: 0.45, scale: 1.2 }}
-            sizing="stretch"
+            color="rgba(160, 160, 160, 1)"
+            animation={{ scale: 100, speed: 90 }}
+            noise={{ opacity: 1, scale: 1.2 }}
+            sizing="fill"
             style={{ width: '100%', height: '100%' }}
           />
         </div>
