@@ -39,7 +39,8 @@ async function searchWithGemini(
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured')
 
   // Use gemini-1.5-pro with googleSearch grounding tool
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`
+  // Search Grounding requires v1beta — keep for this route only
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
 
   const systemInstruction = `You are an AI lead-generation specialist for Rocket Lead Deutschland.
 Your job is to search the web for German Ausbildung (vocational training) companies that match the user's request,

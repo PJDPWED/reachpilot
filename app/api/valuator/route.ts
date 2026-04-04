@@ -39,7 +39,7 @@ async function callGeminiWithFile(
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured')
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`
 
   const systemInstructions = `You are a world-class German HR consultant and CV optimization expert with 15+ years
 of experience helping international candidates (especially from Morocco and North Africa) break into the

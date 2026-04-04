@@ -9,7 +9,7 @@ import { AmbientBackground } from '@/components/background/AmbientBackground'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
-  LayoutDashboard, Upload, Send, Inbox,
+  LayoutDashboard, Upload, Send, Inbox, FileSearch, Sparkles,
 } from 'lucide-react'
 
 // ─── Pixel Rocket — Loading Screen ────────────────────────────────────────────
@@ -71,9 +71,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/upload',    label: 'Upload',  icon: Upload },
-    { href: '/campaigns', label: 'Campaigns',  icon: Send },
-    { href: '/replies',   label: 'Replies',    icon: Inbox },
+    { href: '/upload',    label: 'Upload',    icon: Upload },
+    { href: '/campaigns', label: 'Campaigns', icon: Send },
+    { href: '/replies',   label: 'Replies',   icon: Inbox },
+    { href: '/valuator',  label: 'CV',        icon: FileSearch },
+    { href: '/ausbildung', label: 'AI Lead',  icon: Sparkles },
   ]
 
   useEffect(() => {
@@ -157,14 +159,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     >
       <AmbientBackground />
       <Sidebar />
-      <main className="flex-1 md:ml-64 min-h-dvh relative z-10 pb-16 md:pb-0">
+      <main className="flex-1 md:ml-[220px] min-h-dvh relative z-10 pb-20 md:pb-0">
         <div className="w-full px-4 md:px-8 py-8">
           {children}
         </div>
       </main>
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10">
-        <div className="flex justify-around items-center py-2">
+      {/* Mobile Bottom Nav — scrollable so all 6 items fit */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50"
+        aria-label="Mobile navigation"
+        style={{
+          background: 'rgba(6, 6, 8, 0.92)',
+          backdropFilter: 'blur(24px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+          borderTop: '1px solid rgba(255,255,255,0.09)',
+        }}
+      >
+        <div className="flex items-center overflow-x-auto scrollbar-none py-1.5 px-2 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname.startsWith(item.href)
@@ -172,18 +183,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors"
+                aria-current={isActive ? 'page' : undefined}
+                className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all shrink-0 min-w-[52px]"
                 style={{
-                  color: isActive ? '#FF0000' : 'rgba(255,255,255,0.6)',
+                  color: isActive ? '#EF4444' : 'rgba(255,255,255,0.45)',
+                  background: isActive ? 'rgba(220,38,38,0.10)' : 'transparent',
+                  border: isActive ? '1px solid rgba(220,38,38,0.20)' : '1px solid transparent',
                 }}
               >
-                <Icon size={20} />
-                <span className="text-xs font-mono">{item.label}</span>
+                <Icon size={18} strokeWidth={isActive ? 2 : 1.6} />
+                <span
+                  style={{
+                    fontFamily: 'var(--font-geist-sans)',
+                    fontSize: '10px',
+                    letterSpacing: '-0.01em',
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  {item.label}
+                </span>
               </Link>
             )
           })}
         </div>
-      </div>
+      </nav>
     </div>
   )
 }

@@ -117,7 +117,8 @@ function NavItem({
     >
       <Link
         href={href}
-        className="group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all"
+        aria-current={isActive ? 'page' : undefined}
+        className="group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent"
         style={{
           background: isActive
             ? 'rgba(220, 38, 38, 0.10)'
@@ -200,6 +201,7 @@ export function Sidebar() {
 
   return (
     <aside
+      aria-label="Application sidebar"
       className="hidden md:flex flex-col w-[220px] min-h-screen fixed left-0 top-0 z-40"
       style={{
         background: 'rgba(6, 6, 8, 0.80)',
@@ -253,7 +255,7 @@ export function Sidebar() {
       </div>
 
       {/* ── Navigation ───────────────────────────────────────────────────── */}
-      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto" aria-label="Main navigation">
         {navGroups.map((group) => (
           <div key={group.label}>
             {/* Group label */}
@@ -356,10 +358,11 @@ export function Sidebar() {
             {/* Sign out */}
             <button
               onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-              className="btn-ghost btn-sm w-full justify-start gap-2 mt-0.5"
+              aria-label="Sign out of Rocket Lead"
+              className="btn-ghost btn-sm w-full justify-start gap-2 mt-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent"
               style={{ color: 'rgba(255,255,255,0.28)', fontSize: '12px' }}
             >
-              <LogOut size={12} strokeWidth={1.8} />
+              <LogOut size={12} strokeWidth={1.8} aria-hidden="true" />
               Sign out
             </button>
           </motion.div>

@@ -2,17 +2,28 @@ import { extractCompanyName, extractDomain } from '@/utils/helpers'
 import type { GeneratedEmail, ClassifiedReply, GeneratedFollowUp } from '@/types'
 
 // ─── Native Gemini REST Client ────────────────────────────────────────────────
-// Uses Google's Generative Language API directly — no OpenAI SDK required.
+// Uses Google's Generative Language API directly — stable v1 endpoint.
+// Model priority: gemini-2.0-flash (fastest) → gemini-1.5-flash (fallback)
 
-type GeminiModel = 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'gemini-2.0-flash-exp'
+type GeminiModel =
+  | 'gemini-2.0-flash'
+  | 'gemini-1.5-flash'
+  | 'gemini-1.5-pro'
+  | 'gemini-2.0-flash-exp'
+
+// Default fast model — widely available across all regions and free tiers
+const DEFAULT_MODEL: GeminiModel = 'gemini-2.0-flash'
+const FALLBACK_MODEL: GeminiModel = 'gemini-1.5-flash'
 
 interface GeminiOptions {
   temperature?: number
   maxTokens?: number
   jsonMode?: boolean
+  /** Override the model. Defaults to gemini-2.0-flash */
+  model?: GeminiModel
 }
 
-async function callGemini(
+async function callGeminiRaw(
   model: GeminiModel,
   systemPrompt: string,
   userPrompt: string,
@@ -20,12 +31,11 @@ async function callGemini(
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    throw new Error(
-      'GEMINI_API_KEY is not configured. Add it to your .env.local file.'
-    )
+    throw new Error('GEMINI_API_KEY is not configured. Add it to your .env.local file.')
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+  // Use stable v1 endpoint — v1beta is for experimental features only
+  const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`
 
   const body = {
     contents: [
@@ -82,6 +92,37 @@ async function callGemini(
   return text
 }
 
+/**
+ * Calls Gemini with automatic model fallback.
+ * Tries DEFAULT_MODEL (gemini-2.0-flash) first, falls back to FALLBACK_MODEL (gemini-1.5-flash).
+ */
+async function callGemini(
+  model: GeminiModel,
+  systemPrompt: string,
+  userPrompt: string,
+  options: GeminiOptions = {}
+): Promise<string> {
+  // Always start with the requested model
+  try {
+    return await callGeminiRaw(model, systemPrompt, userPrompt, options)
+  } catch (err) {
+    const msg = (err as Error).message || ''
+    // Only fall back on model-not-found or quota errors, not on safety/content blocks
+    const shouldFallback =
+      msg.includes('404') ||
+      msg.includes('not found') ||
+      msg.includes('not supported') ||
+      msg.includes('quota') ||
+      msg.includes('429')
+
+    if (shouldFallback && model !== FALLBACK_MODEL) {
+      console.warn(`[Gemini] ${model} failed (${msg.slice(0, 80)}), falling back to ${FALLBACK_MODEL}`)
+      return await callGeminiRaw(FALLBACK_MODEL, systemPrompt, userPrompt, options)
+    }
+    throw err
+  }
+}
+
 // ─── Email Generation ──────────────────────────────────────────────────────────
 
 /**
@@ -126,7 +167,7 @@ Existing body to improve: """${existingBody}"""`
 Body: """${existingBody}"""
 Context: Big Reach PR — Google Business Profile optimization.`
 
-  const raw = await callGemini('gemini-1.5-pro', systemPrompt, userPrompt, {
+  const raw = await callGemini(DEFAULT_MODEL, systemPrompt, userPrompt, {
     temperature: 0.7,
     maxTokens: 600,
     jsonMode: true,
@@ -213,7 +254,7 @@ Output valid JSON with keys:
   const userPrompt = `Classify this reply:\n"""\n${replyContent.slice(0, 1500)}\n"""`
 
   try {
-    const raw = await callGemini('gemini-1.5-flash', systemPrompt, userPrompt, {
+    const raw = await callGemini(DEFAULT_MODEL, systemPrompt, userPrompt, {
       temperature: 0.1,
       maxTokens: 150,
       jsonMode: true,
@@ -265,7 +306,7 @@ Output valid JSON with keys: "subject" and "body".`
 Make the follow-up highly persuasive and tailored to their business type based on the domain.`
 
   try {
-    const raw = await callGemini('gemini-1.5-pro', systemPrompt, userPrompt, {
+    const raw = await callGemini(DEFAULT_MODEL, systemPrompt, userPrompt, {
       temperature: 0.7,
       maxTokens: 600,
       jsonMode: true,
