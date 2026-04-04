@@ -38,52 +38,28 @@ const navGroups = [
 // ─── Logo ────────────────────────────────────────────────────────────────────────
 function RocketLeadLogo() {
   return (
-    <div className="flex items-center gap-2.5 select-none">
-      {/* Pixel rocket mark */}
-      <svg
-        width="28"
-        height="28"
-        viewBox="0 0 28 28"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        {/* Body */}
-        <rect x="11" y="8"  width="6"  height="7"  fill="#ffffff" />
-        <rect x="9"  y="11" width="10" height="5"  fill="#ffffff" />
-        {/* Nose */}
-        <rect x="12" y="5"  width="4"  height="4"  fill="#EAB308" />
-        {/* Wings */}
-        <rect x="6"  y="14" width="4"  height="4"  fill="#DC2626" />
-        <rect x="18" y="14" width="4"  height="4"  fill="#DC2626" />
-        {/* Exhaust */}
-        <rect x="11" y="16" width="3"  height="4"  fill="#DC2626" />
-        <rect x="12" y="19" width="3"  height="3"  fill="#EAB308" />
-        {/* Window */}
-        <rect x="13" y="11" width="2"  height="2"  fill="#000000" />
-      </svg>
-
-      {/* Wordmark */}
+    <div className="flex items-center gap-2 select-none">
       <div>
         <div
-          className="leading-none font-semibold tracking-tight"
           style={{
             fontFamily: 'var(--font-geist-sans)',
             fontSize: '15px',
-            letterSpacing: '-0.03em',
+            fontWeight: 700,
+            letterSpacing: '-0.04em',
+            lineHeight: 1,
           }}
         >
           <span style={{ color: '#ffffff' }}>Rocket</span>
-          <span style={{ color: 'rgba(255,255,255,0.55)', marginLeft: '2px' }}>Lead</span>
+          <span style={{ color: 'rgba(255,255,255,0.40)' }}>Lead</span>
         </div>
         <div
-          className="leading-none mt-0.5"
           style={{
             fontFamily: 'var(--font-geist-mono)',
-            fontSize: '9px',
-            letterSpacing: '0.12em',
-            color: 'rgba(255,255,255,0.20)',
-            textTransform: 'uppercase',
+            fontSize: '8px',
+            letterSpacing: '0.16em',
+            color: 'rgba(255,255,255,0.16)',
+            textTransform: 'uppercase' as const,
+            marginTop: '2px',
           }}
         >
           Deutschland

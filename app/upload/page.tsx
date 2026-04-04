@@ -125,10 +125,10 @@ export default function UploadPage() {
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300"
                     style={{
-                      background: i < stepIndex ? 'rgba(52,211,153,0.15)' : i === stepIndex ? 'linear-gradient(135deg, #6366f1, #7c3aed)' : 'rgba(255,255,255,0.06)',
+                      background: i < stepIndex ? 'rgba(52,211,153,0.15)' : i === stepIndex ? '#ffffff' : 'rgba(255,255,255,0.06)',
                       border: i < stepIndex ? '1px solid rgba(52,211,153,0.4)' : i === stepIndex ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                      color: i < stepIndex ? '#34d399' : i === stepIndex ? '#fff' : 'var(--text-muted)',
-                      boxShadow: i === stepIndex ? '0 4px 12px rgba(99,102,241,0.4)' : 'none',
+                      color: i < stepIndex ? '#34d399' : i === stepIndex ? '#000000' : 'var(--text-muted)',
+                      boxShadow: i === stepIndex ? '0 4px 12px rgba(255,255,255,0.20)' : 'none',
                     }}
                   >
                     {i < stepIndex ? <CheckCircle2 size={13} /> : i + 1}
@@ -168,11 +168,11 @@ export default function UploadPage() {
                 className="relative rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden"
                 style={{
                   background: isDragActive
-                    ? 'rgba(99,102,241,0.08)'
+                    ? 'rgba(255,255,255,0.04)'
                     : file
                     ? 'rgba(52,211,153,0.05)'
                     : 'rgba(255,255,255,0.03)',
-                  border: `2px dashed ${isDragActive ? 'rgba(99,102,241,0.5)' : file ? 'rgba(52,211,153,0.4)' : 'rgba(255,255,255,0.10)'}`,
+                  border: `2px dashed ${isDragActive ? 'rgba(255,255,255,0.35)' : file ? 'rgba(52,211,153,0.4)' : 'rgba(255,255,255,0.10)'}`,
                   padding: '48px 32px',
                 }}
               >
@@ -226,13 +226,13 @@ export default function UploadPage() {
                         <motion.div
                           className="w-14 h-14 rounded-2xl flex items-center justify-center"
                           style={{
-                            background: isDragActive ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)',
-                            border: `1px solid ${isDragActive ? 'rgba(99,102,241,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                            background: isDragActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${isDragActive ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.08)'}`,
                           }}
                           animate={isDragActive ? { scale: [1, 1.05, 1] } : {}}
                           transition={{ duration: 0.5, repeat: Infinity }}
                         >
-                          <Upload size={22} style={{ color: isDragActive ? 'var(--accent-light)' : 'var(--text-muted)' }} />
+                          <Upload size={22} style={{ color: isDragActive ? 'rgba(255,255,255,0.70)' : 'var(--text-muted)' }} />
                         </motion.div>
                         <div className="text-center">
                           <p className="font-medium text-white">
@@ -256,9 +256,9 @@ export default function UploadPage() {
                 <div className="flex items-start gap-3">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                    style={{ background: 'rgba(99,102,241,0.12)' }}
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
                   >
-                    <Table size={13} style={{ color: 'var(--accent-light)' }} />
+                    <Table size={13} style={{ color: 'rgba(255,255,255,0.70)' }} />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-white mb-2">Expected format</p>
@@ -278,7 +278,7 @@ export default function UploadPage() {
                     </div>
                     <p className="text-xs mt-2 font-sans" style={{ color: 'var(--text-muted)' }}>
                       Only <code className="text-red-400 font-mono">email</code> is required —{' '}
-                      <span style={{ color: 'var(--accent-light)' }}>AI generates subject &amp; body automatically</span>
+                      <span style={{ color: 'rgba(255,255,255,0.70)' }}>AI generates subject &amp; body automatically</span>
                     </p>
                   </div>
                 </div>
@@ -287,10 +287,11 @@ export default function UploadPage() {
               <motion.button
                 onClick={handlePreview}
                 disabled={!file || uploading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-white"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold"
                 style={{
-                  background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                  boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  boxShadow: '0 4px 20px rgba(255,255,255,0.12)',
                   opacity: !file || uploading ? 0.5 : 1,
                   cursor: !file || uploading ? 'not-allowed' : 'pointer',
                 }}
@@ -299,7 +300,7 @@ export default function UploadPage() {
               >
                 {uploading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                     Parsing file...
                   </>
                 ) : (
@@ -402,7 +403,7 @@ export default function UploadPage() {
                             {lead.subject ? (
                               lead.subject.slice(0, 35) + (lead.subject.length > 35 ? '…' : '')
                             ) : (
-                              <span className="flex items-center gap-1" style={{ color: 'var(--accent-light)' }}>
+                              <span className="flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.70)' }}>
                                 <Sparkles size={10} /> AI will generate
                               </span>
                             )}
@@ -411,7 +412,7 @@ export default function UploadPage() {
                             {lead.body ? (
                               lead.body.slice(0, 40) + (lead.body.length > 40 ? '…' : '')
                             ) : (
-                              <span className="flex items-center gap-1" style={{ color: 'var(--accent-light)' }}>
+                              <span className="flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.70)' }}>
                                 <Sparkles size={10} /> AI will generate
                               </span>
                             )}
@@ -451,14 +452,14 @@ export default function UploadPage() {
                 {/* AI toggle */}
                 <div
                   className="flex items-center justify-between p-4 rounded-xl"
-                  style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
                 >
                   <div className="flex items-start gap-2.5">
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ background: 'rgba(99,102,241,0.2)' }}
+                      style={{ background: 'rgba(255,255,255,0.08)' }}
                     >
-                      <Sparkles size={13} style={{ color: 'var(--accent-light)' }} />
+                      <Sparkles size={13} style={{ color: 'rgba(255,255,255,0.70)' }} />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-white">AI Email Generation</p>
@@ -471,7 +472,7 @@ export default function UploadPage() {
                     onClick={() => setGenerateAI(!generateAI)}
                     className="relative flex-shrink-0 w-10 h-5.5 rounded-full transition-colors duration-200"
                     style={{
-                      background: generateAI ? '#6366f1' : 'rgba(255,255,255,0.12)',
+                      background: generateAI ? '#ffffff' : 'rgba(255,255,255,0.12)',
                       width: '40px',
                       height: '22px',
                     }}
@@ -500,10 +501,11 @@ export default function UploadPage() {
                 <motion.button
                   onClick={handleCreateCampaign}
                   disabled={!campaignName.trim() || uploading}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
                   style={{
-                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                    boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    boxShadow: '0 4px 20px rgba(255,255,255,0.12)',
                     opacity: !campaignName.trim() || uploading ? 0.5 : 1,
                     cursor: !campaignName.trim() || uploading ? 'not-allowed' : 'pointer',
                   }}
@@ -512,7 +514,7 @@ export default function UploadPage() {
                 >
                   {uploading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                       Creating campaign...
                     </>
                   ) : (
@@ -585,10 +587,11 @@ export default function UploadPage() {
               >
                 <button
                   onClick={() => router.push(`/campaigns/${result.campaign!.id}`)}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
                   style={{
-                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                    boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    boxShadow: '0 4px 20px rgba(255,255,255,0.12)',
                   }}
                 >
                   View Campaign & Start Sending
