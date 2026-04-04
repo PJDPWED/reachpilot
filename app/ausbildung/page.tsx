@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import { AppShell } from '@/components/layout/AppShell'
 import {
   Sparkles,
   Search,
@@ -68,8 +69,8 @@ function LeadRow({
     <div
       className="rounded-xl overflow-hidden transition-all duration-150"
       style={{
-        background: selected ? 'rgba(220,38,38,0.07)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${selected ? 'rgba(220,38,38,0.25)' : 'rgba(255,255,255,0.07)'}`,
+        background: selected ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
+        border: `1px solid ${selected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.07)'}`,
       }}
     >
       {/* Main row */}
@@ -259,6 +260,10 @@ export default function AusbildungAIPage() {
         body: JSON.stringify({ query }),
       })
       const data = await res.json()
+      if (data.error === 'QUOTA_EXCEEDED') {
+        toast.error('API Quota Exceeded. Please try again in a moment.')
+        return
+      }
       if (!res.ok) throw new Error(data.error || 'Search failed')
       setResult(data.result)
       toast.success(`Found ${data.result.leads.length} leads`)
@@ -324,6 +329,7 @@ export default function AusbildungAIPage() {
   const noneSelected = selected.size === 0
 
   return (
+    <AppShell>
     <div className="min-h-screen" style={{ paddingLeft: '220px' }}>
       <div className="max-w-4xl mx-auto px-6 py-10">
 
@@ -556,5 +562,6 @@ export default function AusbildungAIPage() {
         </AnimatePresence>
       </div>
     </div>
+    </AppShell>
   )
 }
