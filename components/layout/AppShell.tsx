@@ -12,56 +12,6 @@ import {
   LayoutDashboard, Upload, Send, Inbox, FileSearch, Sparkles,
 } from 'lucide-react'
 
-// ─── Pixel Rocket — Loading Screen ────────────────────────────────────────────
-// Black/Red/Gold — Rocket Lead Deutschland palette
-
-const PIXEL_MAP: string[] = [
-  '000010000',
-  '000121000',
-  '001212100',
-  '011222110',
-  '011212110',
-  '001212100',
-  '010000010',
-  '100333001',
-  '000333000',
-]
-const PIXEL_COLORS: Record<string, string> = {
-  '0': 'transparent',
-  '1': '#ffffff',   // white body
-  '2': '#cccccc',   // light grey highlight
-  '3': '#aaaaaa',   // mid grey flame
-}
-
-function LoadingRocket() {
-  return (
-    <motion.div
-      animate={{ y: [0, -8, 0] }}
-      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(9, 7px)',
-          gridTemplateRows: 'repeat(9, 7px)',
-          imageRendering: 'pixelated',
-          gap: 0,
-          filter: 'drop-shadow(0 0 14px rgba(255,255,255,0.60))',
-        }}
-      >
-        {PIXEL_MAP.flatMap((row, y) =>
-          row.split('').map((cell, x) => (
-            <div
-              key={`${y}-${x}`}
-              style={{ width: 7, height: 7, background: PIXEL_COLORS[cell] ?? 'transparent' }}
-            />
-          ))
-        )}
-      </div>
-    </motion.div>
-  )
-}
-
 // ─── AppShell ─────────────────────────────────────────────────────────────────
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -91,59 +41,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         style={{ background: '#000000' }}
       >
         <AmbientBackground />
-
         <motion.div
-          className="flex flex-col items-center gap-6 relative z-10"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+          className="flex flex-col items-center gap-5 relative z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
         >
-          <LoadingRocket />
-
-          {/* Brand name */}
-          <motion.div
-            className="text-center"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div
-              className="text-white mb-1 font-mono"
-              style={{ fontSize: '2rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}
-            >
-              ROCKET LEAD
-            </div>
-            <div
-              className="tracking-widest uppercase animate-pixel-flicker font-mono"
-              style={{
-                fontSize: '14px',
-                color: 'rgba(255,255,255,0.40)',
-                letterSpacing: '0.16em',
-              }}
-            >
-              INITIALIZING SYSTEM...
-            </div>
-          </motion.div>
-
-          {/* Pixel loading bar */}
-          <div
-            style={{
-              width: 140,
-              height: 6,
-              background: 'rgba(255,255,255,0.06)',
-              border: '2px solid rgba(255,255,255,0.15)',
-              overflow: 'hidden',
-            }}
-          >
-            <motion.div
-              style={{
-                height: '100%',
-                background: 'repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 6px, #888888 6px, #888888 12px)',
-                backgroundSize: '12px 100%',
-              }}
-              animate={{ width: ['0%', '100%'], backgroundPosition: ['0% 0%', '100% 0%'] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-            />
+          {/* Wordmark */}
+          <div className="select-none" style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '18px', fontWeight: 700, letterSpacing: '-0.04em' }}>
+            <span style={{ color: '#ffffff' }}>Rocket</span>
+            <span style={{ color: 'rgba(255,255,255,0.30)' }}>Lead</span>
+          </div>
+          {/* Dots */}
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                style={{ width: 4, height: 4, borderRadius: 9999, background: 'rgba(255,255,255,0.45)' }}
+                animate={{ opacity: [0.2, 1, 0.2] }}
+                transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.2 }}
+              />
+            ))}
           </div>
         </motion.div>
       </div>
