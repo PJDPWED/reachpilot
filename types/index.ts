@@ -2,11 +2,20 @@
 
 export type CampaignStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed'
 
+export interface CampaignAttachment {
+  url: string
+  filename: string
+  mimeType: string
+  size: number
+  storagePath: string
+}
+
 export interface Campaign {
   id: string
   name: string
   status: CampaignStatus
   created_at: string
+  attachments?: CampaignAttachment[]
   // virtual counts joined in queries
   total_leads?: number
   sent_leads?: number

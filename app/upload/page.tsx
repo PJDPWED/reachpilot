@@ -9,9 +9,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, CheckCircle2, AlertCircle,
   Sparkles, ChevronRight, X, Table, ArrowRight,
+  Paperclip, File as FileIcon, Trash2,
 } from 'lucide-react'
 import { cn } from '@/utils/helpers'
 import toast from 'react-hot-toast'
+import type { CampaignAttachment } from '@/types'
 
 interface ParsedLead {
   email: string
@@ -31,6 +33,22 @@ interface UploadResult {
 const STEPS = ['Upload', 'Preview', 'Done'] as const
 type Step = 'upload' | 'preview' | 'done'
 
+const ATTACHMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx'
+const ATTACHMENT_MIME_LABELS: Record<string, string> = {
+  'application/pdf': 'PDF',
+  'image/jpeg': 'JPG',
+  'image/png': 'PNG',
+  'image/webp': 'WEBP',
+  'application/msword': 'DOC',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function UploadPage() {
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
@@ -39,6 +57,8 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<UploadResult | null>(null)
   const [step, setStep] = useState<Step>('upload')
+  const [attachments, setAttachments] = useState<CampaignAttachment[]>([])
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -87,6 +107,9 @@ export default function UploadPage() {
       formData.append('file', file)
       formData.append('campaignName', campaignName.trim())
       formData.append('generateAI', String(generateAI))
+      if (attachments.length > 0) {
+        formData.append('attachments', JSON.stringify(attachments))
+      }
       const res = await fetch('/api/upload', { method: 'POST', body: formData })
       const json = await res.json()
       if (!json.success) { toast.error(json.error || 'Failed to create campaign'); return }
@@ -100,7 +123,53 @@ export default function UploadPage() {
     }
   }
 
-  const reset = () => { setFile(null); setResult(null); setCampaignName(''); setStep('upload') }
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    if (attachments.length + files.length > 3) {
+      toast.error('Max 3 attachments per campaign')
+      return
+    }
+
+    setUploadingAttachment(true)
+    for (const f of files) {
+      try {
+        const fd = new FormData()
+        fd.append('file', f)
+        const res = await fetch('/api/attachments', { method: 'POST', body: fd })
+        const json = await res.json()
+        if (!json.success) {
+          toast.error(json.error || `Failed to upload ${f.name}`)
+          continue
+        }
+        setAttachments((prev) => [...prev, json.data as CampaignAttachment])
+      } catch {
+        toast.error(`Upload failed for ${f.name}`)
+      }
+    }
+    setUploadingAttachment(false)
+    // Reset input so same file can be re-selected
+    e.target.value = ''
+  }
+
+  const handleRemoveAttachment = async (att: CampaignAttachment) => {
+    // Optimistically remove from UI
+    setAttachments((prev) => prev.filter((a) => a.storagePath !== att.storagePath))
+    // Delete from storage in background
+    fetch('/api/attachments', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storagePath: att.storagePath }),
+    }).catch(() => {/* ignore — orphaned file is fine */})
+  }
+
+  const reset = () => {
+    setFile(null)
+    setResult(null)
+    setCampaignName('')
+    setStep('upload')
+    setAttachments([])
+  }
 
   const stepIndex = { upload: 0, preview: 1, done: 2 }[step]
 
@@ -483,6 +552,102 @@ export default function UploadPage() {
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     />
                   </button>
+                </div>
+
+                {/* Attachments */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Paperclip size={13} style={{ color: 'rgba(255,255,255,0.50)' }} />
+                      <span className="text-sm font-medium text-white">Attachments</span>
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
+                      >
+                        {attachments.length}/3
+                      </span>
+                    </div>
+                    {attachments.length < 3 && (
+                      <label
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer text-xs font-medium transition-all"
+                        style={{
+                          background: uploadingAttachment ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.07)',
+                          border: '1px solid rgba(255,255,255,0.10)',
+                          color: uploadingAttachment ? 'var(--text-muted)' : 'rgba(255,255,255,0.80)',
+                          pointerEvents: uploadingAttachment ? 'none' : 'auto',
+                        }}
+                      >
+                        {uploadingAttachment ? (
+                          <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Upload size={11} />
+                        )}
+                        {uploadingAttachment ? 'Uploading…' : 'Add file'}
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept={ATTACHMENT_ACCEPT}
+                          multiple
+                          onChange={handleAttachmentUpload}
+                          disabled={uploadingAttachment}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {attachments.length === 0 ? (
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Attach CVs, photos, or documents sent with every email · PDF, JPG, PNG, DOC, DOCX · max 10 MB each
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <AnimatePresence>
+                        {attachments.map((att) => (
+                          <motion.div
+                            key={att.storagePath}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, x: -12 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                            className="flex items-center gap-3 p-3 rounded-xl"
+                            style={{
+                              background: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                            }}
+                          >
+                            <div
+                              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ background: 'rgba(255,255,255,0.07)' }}
+                            >
+                              <FileIcon size={14} style={{ color: 'rgba(255,255,255,0.60)' }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-white truncate">{att.filename}</p>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                {ATTACHMENT_MIME_LABELS[att.mimeType] ?? att.mimeType} · {formatBytes(att.size)}
+                              </p>
+                            </div>
+                            <motion.button
+                              onClick={() => handleRemoveAttachment(att)}
+                              className="w-6 h-6 flex items-center justify-center rounded-md shrink-0 transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
+                              whileHover={{ scale: 1.15 }}
+                              whileTap={{ scale: 0.9 }}
+                              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = '#f87171'}
+                              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'}
+                            >
+                              <Trash2 size={12} />
+                            </motion.button>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                      {attachments.length < 3 && (
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          Add up to {3 - attachments.length} more · PDF, JPG, PNG, DOC, DOCX · max 10 MB each
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

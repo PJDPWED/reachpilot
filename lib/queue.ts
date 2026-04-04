@@ -93,6 +93,20 @@ export async function processQueue(
 
   if (!dueLeads || dueLeads.length === 0) return { processed: 0, errors: 0 }
 
+  // Pre-fetch campaign attachments (keyed by campaign_id to avoid N+1 queries)
+  const campaignIds = [...new Set(dueLeads.map((l) => (l as Lead).campaign_id))]
+  const campaignAttachments: Record<string, import('@/types').CampaignAttachment[]> = {}
+  for (const cid of campaignIds) {
+    const { data: camp } = await db
+      .from('campaigns')
+      .select('attachments')
+      .eq('id', cid)
+      .single()
+    if (camp?.attachments) {
+      campaignAttachments[cid] = camp.attachments as import('@/types').CampaignAttachment[]
+    }
+  }
+
   let processed = 0
   let errors = 0
 
@@ -103,12 +117,20 @@ export async function processQueue(
     // Mark as sending to prevent duplicate processing
     await db.from('leads').update({ status: 'sending' }).eq('id', lead.id)
 
+    // Map campaign attachments to AttachmentInput format
+    const atts = (campaignAttachments[lead.campaign_id] ?? []).map((a) => ({
+      url: a.url,
+      filename: a.filename,
+      mimeType: a.mimeType,
+    }))
+
     try {
       const result = await sendEmailWithFallback({
         userEmail,
         to: lead.email,
         subject: lead.subject!,
         body: lead.body!,
+        ...(atts.length > 0 ? { attachments: atts } : {}),
       })
 
       await db

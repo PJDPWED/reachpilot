@@ -19,6 +19,11 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null
     const campaignName = formData.get('campaignName') as string | null
     const generateAI = formData.get('generateAI') === 'true'
+    const attachmentsRaw = formData.get('attachments') as string | null
+    let attachments: unknown[] = []
+    if (attachmentsRaw) {
+      try { attachments = JSON.parse(attachmentsRaw) } catch { /* ignore malformed */ }
+    }
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 })
@@ -71,7 +76,11 @@ export async function POST(req: NextRequest) {
       // Create campaign
       const { data: campaign, error: campaignError } = await db
         .from('campaigns')
-        .insert({ name, status: 'pending' })
+        .insert({
+          name,
+          status: 'pending',
+          ...(attachments.length > 0 ? { attachments } : {}),
+        })
         .select()
         .single()
 
