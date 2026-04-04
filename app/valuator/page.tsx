@@ -7,15 +7,27 @@ import { useDropzone } from 'react-dropzone'
 import toast from 'react-hot-toast'
 import {
   Paperclip, Send, X, FileText, Bot, User,
-  RotateCcw, Sparkles, ChevronDown,
+  RotateCcw, Sparkles, CheckCircle2, TrendingUp, Flag,
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+interface CVEvaluation {
+  type: 'evaluation'
+  score: number
+  grade: string
+  strengths: string[]
+  improvements: string[]
+  ausbildung_tips: string[]
+  summary: string
+  language: 'en' | 'de' | 'fr'
+}
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
+  evaluation?: CVEvaluation
   file?: { name: string; size: number }
   timestamp: Date
 }
@@ -34,10 +46,278 @@ function renderMarkdown(text: string): string {
     .replace(/\n/g, '<br />')
 }
 
+// ─── Score Ring ───────────────────────────────────────────────────────────────
+
+function ScoreRing({ score }: { score: number }) {
+  const radius = 44
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (score / 100) * circumference
+
+  return (
+    <div className="relative w-28 h-28 flex items-center justify-center">
+      <svg width="112" height="112" className="absolute inset-0 -rotate-90">
+        {/* Track */}
+        <circle
+          cx="56"
+          cy="56"
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth="6"
+        />
+        {/* Progress */}
+        <motion.circle
+          cx="56"
+          cy="56"
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.85)"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+        />
+      </svg>
+      <div className="flex flex-col items-center">
+        <motion.span
+          className="text-3xl font-bold text-white"
+          style={{ fontFamily: 'var(--font-geist-sans)', letterSpacing: '-0.04em', lineHeight: 1 }}
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          {score}
+        </motion.span>
+        <span
+          style={{
+            fontFamily: 'var(--font-geist-mono)',
+            fontSize: '9px',
+            color: 'rgba(255,255,255,0.35)',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          /100
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Evaluation Card ──────────────────────────────────────────────────────────
+
+function EvaluationCard({ evaluation }: { evaluation: CVEvaluation }) {
+  const sections = [
+    {
+      label: evaluation.language === 'de' ? 'Stärken' : evaluation.language === 'fr' ? 'Points forts' : 'Strengths',
+      items: evaluation.strengths,
+      icon: <CheckCircle2 size={13} />,
+      accent: 'rgba(134,239,172,0.12)',
+      border: 'rgba(134,239,172,0.20)',
+      iconColor: 'rgba(134,239,172,0.80)',
+    },
+    {
+      label: evaluation.language === 'de' ? 'Verbesserungen' : evaluation.language === 'fr' ? 'Améliorations' : 'Improvements',
+      items: evaluation.improvements,
+      icon: <TrendingUp size={13} />,
+      accent: 'rgba(251,191,36,0.10)',
+      border: 'rgba(251,191,36,0.18)',
+      iconColor: 'rgba(251,191,36,0.80)',
+    },
+    {
+      label: evaluation.language === 'de' ? 'Ausbildungs-Tipps' : evaluation.language === 'fr' ? 'Conseils Ausbildung' : 'Ausbildung Tips',
+      items: evaluation.ausbildung_tips,
+      icon: <Flag size={13} />,
+      accent: 'rgba(147,197,253,0.10)',
+      border: 'rgba(147,197,253,0.18)',
+      iconColor: 'rgba(147,197,253,0.80)',
+    },
+  ]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      className="w-full max-w-2xl"
+    >
+      {/* Header — Score ring + Grade */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.05 }}
+        className="flex items-center gap-6 mb-5 px-2"
+      >
+        <ScoreRing score={evaluation.score} />
+        <div>
+          <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.25 }}
+            className="flex items-baseline gap-2"
+          >
+            <span
+              style={{
+                fontFamily: 'var(--font-geist-sans)',
+                fontSize: '52px',
+                fontWeight: 700,
+                color: '#ffffff',
+                letterSpacing: '-0.05em',
+                lineHeight: 1,
+              }}
+            >
+              {evaluation.grade}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-geist-mono)',
+                fontSize: '11px',
+                color: 'rgba(255,255,255,0.30)',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Grade
+            </span>
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            style={{
+              fontFamily: 'var(--font-geist-sans)',
+              fontSize: '12px',
+              color: 'rgba(255,255,255,0.45)',
+              marginTop: '4px',
+              maxWidth: '240px',
+              lineHeight: 1.5,
+            }}
+          >
+            {evaluation.language === 'de' ? 'German Market Score' : evaluation.language === 'fr' ? 'Score Marché Allemand' : 'German Market Score'}
+          </motion.p>
+        </div>
+      </motion.div>
+
+      {/* Three columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        {sections.map((section, si) => (
+          <motion.div
+            key={section.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15 + si * 0.08 }}
+            className="rounded-2xl p-3.5"
+            style={{
+              background: section.accent,
+              border: `1px solid ${section.border}`,
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-2.5" style={{ color: section.iconColor }}>
+              {section.icon}
+              <span
+                style={{
+                  fontFamily: 'var(--font-geist-sans)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: section.iconColor,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {section.label}
+              </span>
+            </div>
+            <ul className="space-y-1.5">
+              {section.items.map((item, i) => (
+                <motion.li
+                  key={i}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 + si * 0.08 + i * 0.05 }}
+                  style={{
+                    fontFamily: 'var(--font-geist-sans)',
+                    fontSize: '12px',
+                    color: 'rgba(255,255,255,0.70)',
+                    lineHeight: 1.5,
+                    paddingLeft: '8px',
+                    borderLeft: `2px solid ${section.border}`,
+                  }}
+                >
+                  {item}
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Summary */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.45 }}
+        className="rounded-2xl px-4 py-3"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <p
+          style={{
+            fontFamily: 'var(--font-geist-sans)',
+            fontSize: '13px',
+            color: 'rgba(255,255,255,0.65)',
+            lineHeight: 1.65,
+          }}
+        >
+          {evaluation.summary}
+        </p>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ─── Message Bubble ──────────────────────────────────────────────────────────
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
+
+  // If assistant message has a structured evaluation, render the card
+  if (!isUser && message.evaluation) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="flex gap-3 flex-row"
+      >
+        {/* Avatar */}
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1"
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
+          }}
+        >
+          <Bot size={12} style={{ color: 'rgba(255,255,255,0.70)' }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <EvaluationCard evaluation={message.evaluation} />
+          <p
+            className="mt-2"
+            style={{
+              fontFamily: 'var(--font-geist-mono)',
+              fontSize: '10px',
+              color: 'rgba(255,255,255,0.20)',
+            }}
+          >
+            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div
@@ -263,6 +543,28 @@ export default function ValuatorPage() {
             m.id === assistantId ? { ...m, content: accumulated } : m
           )
         )
+      }
+
+      // After stream completes — try to parse as structured evaluation
+      const trimmed = accumulated.trim()
+      // Strip possible markdown code fences
+      const jsonStr = trimmed.startsWith('```')
+        ? trimmed.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '').trim()
+        : trimmed
+
+      try {
+        const parsed = JSON.parse(jsonStr)
+        if (parsed?.type === 'evaluation') {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: accumulated, evaluation: parsed as CVEvaluation }
+                : m
+            )
+          )
+        }
+      } catch {
+        // Not JSON — keep plain text rendering, no action needed
       }
     } catch (err) {
       toast.error((err as Error).message || 'Something went wrong. Please try again.')
