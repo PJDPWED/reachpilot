@@ -90,9 +90,65 @@ async function callGeminiRaw(
   return text
 }
 
+async function callOpenRouter(
+  systemPrompt: string,
+  userPrompt: string,
+  options: GeminiOptions = {}
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY not configured — add it to .env.local to enable fallback')
+  }
+
+  const models = [
+    'google/gemini-2.0-flash-exp:free',
+    'meta-llama/llama-3.2-11b-vision-instruct:free',
+  ]
+
+  let lastErr: Error | null = null
+  for (const model of models) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://rocketlead.app',
+          'X-Title': 'Rocket Lead',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens ?? 600,
+          ...(options.jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        }),
+      })
+
+      if (!response.ok) {
+        const txt = await response.text().catch(() => '')
+        throw new Error(`OpenRouter ${model} error ${response.status}: ${txt.slice(0, 200)}`)
+      }
+
+      const data = await response.json()
+      const text = data.choices?.[0]?.message?.content
+      if (!text) throw new Error(`OpenRouter returned empty content from ${model}`)
+      return text
+    } catch (err) {
+      lastErr = err as Error
+      console.warn(`[OpenRouter] ${model} failed: ${(err as Error).message.slice(0, 80)}`)
+    }
+  }
+  throw lastErr ?? new Error('All OpenRouter models failed')
+}
+
 /**
  * Calls Gemini with automatic model fallback.
  * Tries DEFAULT_MODEL (gemini-2.0-flash) first, falls back to FALLBACK_MODEL (gemini-1.5-flash).
+ * If Gemini returns a 429 quota error, tries OpenRouter as a secondary fallback.
  */
 async function callGemini(
   model: GeminiModel,
@@ -100,12 +156,23 @@ async function callGemini(
   userPrompt: string,
   options: GeminiOptions = {}
 ): Promise<string> {
-  // Always start with the requested model
   try {
     return await callGeminiRaw(model, systemPrompt, userPrompt, options)
   } catch (err) {
     const msg = (err as Error).message || ''
-    // Only fall back on model-not-found errors, not on quota/rate-limit (surface those to UI)
+
+    // Quota exceeded — try OpenRouter as fallback before giving up
+    if (msg.includes('QUOTA_EXCEEDED')) {
+      console.warn('[AI] Gemini quota exceeded — trying OpenRouter fallback')
+      try {
+        return await callOpenRouter(systemPrompt, userPrompt, options)
+      } catch (orErr) {
+        console.error('[AI] OpenRouter fallback also failed:', (orErr as Error).message)
+        // Surface the original quota error (more actionable)
+      }
+    }
+
+    // Fall back to gemini-1.5-flash for model-not-found errors
     const shouldFallback =
       msg.includes('404') ||
       msg.includes('not found') ||
