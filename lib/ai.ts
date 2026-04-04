@@ -145,10 +145,46 @@ async function callOpenRouter(
   throw lastErr ?? new Error('All OpenRouter models failed')
 }
 
+async function callOllama(
+  systemPrompt: string,
+  userPrompt: string,
+  options: GeminiOptions = {}
+): Promise<string> {
+  const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
+  const model = process.env.OLLAMA_MODEL || 'qwen2.5-coder:14b'
+
+  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: options.temperature ?? 0.7,
+      max_tokens: options.maxTokens ?? 600,
+      stream: false,
+    }),
+    signal: AbortSignal.timeout(30000),
+  })
+
+  if (!response.ok) {
+    const txt = await response.text().catch(() => '')
+    throw new Error(`Ollama error ${response.status}: ${txt.slice(0, 200)}`)
+  }
+
+  const data = await response.json()
+  const text = data.choices?.[0]?.message?.content
+  if (!text) throw new Error('Ollama returned empty content')
+  return text
+}
+
 /**
  * Calls Gemini with automatic model fallback.
  * Tries DEFAULT_MODEL (gemini-2.0-flash) first, falls back to FALLBACK_MODEL (gemini-1.5-flash).
- * If Gemini returns a 429 quota error, tries OpenRouter as a secondary fallback.
+ * If OLLAMA_ENABLED=true, tries Ollama first (free, unlimited, local).
+ * If Gemini returns a 429 quota error, tries Ollama then OpenRouter as secondary fallbacks.
  */
 async function callGemini(
   model: GeminiModel,
@@ -156,18 +192,34 @@ async function callGemini(
   userPrompt: string,
   options: GeminiOptions = {}
 ): Promise<string> {
+  // If Ollama is enabled, try it first (free, unlimited, local)
+  if (process.env.OLLAMA_ENABLED === 'true') {
+    try {
+      return await callOllama(systemPrompt, userPrompt, options)
+    } catch (ollamaErr) {
+      console.warn('[AI] Ollama failed, falling back to Gemini:', (ollamaErr as Error).message.slice(0, 80))
+    }
+  }
+
   try {
     return await callGeminiRaw(model, systemPrompt, userPrompt, options)
   } catch (err) {
     const msg = (err as Error).message || ''
 
-    // Quota exceeded — try OpenRouter as fallback before giving up
+    // Quota exceeded — try Ollama first (local, free), then OpenRouter
     if (msg.includes('QUOTA_EXCEEDED')) {
-      console.warn('[AI] Gemini quota exceeded — trying OpenRouter fallback')
+      console.warn('[AI] Gemini quota exceeded — trying Ollama then OpenRouter fallback')
+      // Try Ollama first (local, free)
+      if (process.env.OLLAMA_BASE_URL) {
+        try {
+          return await callOllama(systemPrompt, userPrompt, options)
+        } catch {}
+      }
+      // Then OpenRouter
       try {
         return await callOpenRouter(systemPrompt, userPrompt, options)
       } catch (orErr) {
-        console.error('[AI] OpenRouter fallback also failed:', (orErr as Error).message)
+        console.error('[AI] All fallbacks failed:', (orErr as Error).message)
         // Surface the original quota error (more actionable)
       }
     }
