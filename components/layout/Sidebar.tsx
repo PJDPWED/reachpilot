@@ -74,7 +74,7 @@ function RocketLeadLogo() {
           }}
         >
           <span style={{ color: '#ffffff' }}>Rocket</span>
-          <span style={{ color: '#DC2626', marginLeft: '2px' }}>Lead</span>
+          <span style={{ color: 'rgba(255,255,255,0.55)', marginLeft: '2px' }}>Lead</span>
         </div>
         <div
           className="leading-none mt-0.5"
@@ -121,10 +121,10 @@ function NavItem({
         className="group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent"
         style={{
           background: isActive
-            ? 'rgba(220, 38, 38, 0.10)'
+            ? 'rgba(255, 255, 255, 0.06)'
             : 'transparent',
           border: isActive
-            ? '1px solid rgba(220, 38, 38, 0.22)'
+            ? '1px solid rgba(255, 255, 255, 0.12)'
             : '1px solid transparent',
         }}
       >
@@ -133,7 +133,7 @@ function NavItem({
           <motion.div
             layoutId="nav-active-bar"
             className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full"
-            style={{ background: '#DC2626', boxShadow: '0 0 8px rgba(220,38,38,0.70)' }}
+            style={{ background: '#ffffff', boxShadow: '0 0 12px rgba(255,255,255,0.60)' }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           />
         )}
@@ -143,12 +143,12 @@ function NavItem({
           className="flex items-center justify-center w-7 h-7 rounded-md shrink-0 transition-all duration-150"
           style={{
             background: isActive
-              ? 'rgba(220, 38, 38, 0.18)'
+              ? 'rgba(255, 255, 255, 0.10)'
               : 'rgba(255, 255, 255, 0.04)',
             border: isActive
-              ? '1px solid rgba(220, 38, 38, 0.35)'
+              ? '1px solid rgba(255, 255, 255, 0.20)'
               : '1px solid rgba(255, 255, 255, 0.07)',
-            color: isActive ? '#EF4444' : 'rgba(255,255,255,0.35)',
+            color: isActive ? '#ffffff' : 'rgba(255,255,255,0.35)',
           }}
         >
           <Icon size={13} strokeWidth={isActive ? 2.0 : 1.6} />
@@ -184,7 +184,7 @@ function NavItem({
           <ChevronRight
             size={11}
             strokeWidth={2.5}
-            style={{ color: 'rgba(220,38,38,0.60)', flexShrink: 0 }}
+            style={{ color: 'rgba(255,255,255,0.40)', flexShrink: 0 }}
           />
         )}
       </Link>
@@ -237,15 +237,15 @@ export function Sidebar() {
         {/* Live indicator */}
         <div className="flex items-center gap-1.5 mt-2.5 px-0.5">
           <span
-            className="status-dot status-dot-red status-dot-blink"
-            style={{ width: '5px', height: '5px' }}
+            className="status-dot status-dot-blink"
+            style={{ background: 'rgba(255,255,255,0.40)', width: '5px', height: '5px' }}
           />
           <span
             style={{
               fontFamily: 'var(--font-geist-mono)',
               fontSize: '9px',
               letterSpacing: '0.10em',
-              color: 'rgba(220,38,38,0.55)',
+              color: 'rgba(255,255,255,0.28)',
               textTransform: 'uppercase',
             }}
           >
@@ -320,9 +320,9 @@ export function Sidebar() {
               <div
                 className="flex items-center justify-center w-7 h-7 rounded-full shrink-0 font-semibold text-xs"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(220,38,38,0.30), rgba(234,179,8,0.20))',
-                  border: '1px solid rgba(220,38,38,0.30)',
-                  color: '#EF4444',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06))',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: 'rgba(255,255,255,0.80)',
                   fontFamily: 'var(--font-geist-sans)',
                 }}
               >
