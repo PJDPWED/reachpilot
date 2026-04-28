@@ -120,6 +120,15 @@ export async function getAuthenticatedClient(userEmail: string) {
 
 // ─── Email Sending ─────────────────────────────────────────────────────────────
 
+export interface AttachmentInput {
+  /** Publicly accessible URL (e.g. Supabase Storage signed URL) */
+  url: string
+  /** Filename to use in the email (e.g. "Lebenslauf_Omar.pdf") */
+  filename: string
+  /** MIME type (e.g. "application/pdf", "image/jpeg") */
+  mimeType: string
+}
+
 export interface SendEmailOptions {
   userEmail: string
   to: string
@@ -127,6 +136,8 @@ export interface SendEmailOptions {
   body: string
   replyToMessageId?: string
   threadId?: string
+  /** Optional array of file attachments */
+  attachments?: AttachmentInput[]
 }
 
 export interface SentEmailResult {
@@ -134,38 +145,143 @@ export interface SentEmailResult {
   threadId: string
 }
 
+// ─── MIME Builder Helpers ──────────────────────────────────────────────────────
+
+function encodeWordIfNeeded(str: string): string {
+  // RFC 2047 encode if non-ASCII characters present
+  if (/[^\x00-\x7F]/.test(str)) {
+    return `=?UTF-8?B?${Buffer.from(str, 'utf-8').toString('base64')}?=`
+  }
+  return str
+}
+
+/**
+ * Downloads a file from a URL and returns its base64 content.
+ */
+async function fetchAttachmentAsBase64(url: string): Promise<string> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch attachment from ${url}: HTTP ${response.status}`)
+  }
+  const buffer = await response.arrayBuffer()
+  return Buffer.from(buffer).toString('base64')
+}
+
+/**
+ * Builds a MIME multipart/mixed message with the text body + file attachments.
+ * Returns the full raw RFC 2822 message string.
+ */
+async function buildMimeMultipart(options: {
+  from: string
+  to: string
+  subject: string
+  body: string
+  date: string
+  replyToMessageId?: string
+  attachments: AttachmentInput[]
+}): Promise<string> {
+  const boundary = `==RocketLead_${Date.now()}_${Math.random().toString(36).slice(2)}`
+
+  const lines: string[] = []
+
+  // ── Outer headers ────────────────────────────────────────────────────────
+  lines.push(`From: ${options.from}`)
+  lines.push(`To: ${options.to}`)
+  lines.push(`Subject: ${encodeWordIfNeeded(options.subject)}`)
+  lines.push(`Date: ${options.date}`)
+  lines.push('MIME-Version: 1.0')
+  lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`)
+
+  if (options.replyToMessageId) {
+    lines.push(`In-Reply-To: ${options.replyToMessageId}`)
+    lines.push(`References: ${options.replyToMessageId}`)
+  }
+
+  lines.push('')  // blank line before body
+
+  // ── Text part ────────────────────────────────────────────────────────────
+  lines.push(`--${boundary}`)
+  lines.push('Content-Type: text/plain; charset=UTF-8')
+  lines.push('Content-Transfer-Encoding: quoted-printable')
+  lines.push('')
+  lines.push(options.body)
+  lines.push('')
+
+  // ── Attachment parts ─────────────────────────────────────────────────────
+  for (const att of options.attachments) {
+    try {
+      const base64Data = await fetchAttachmentAsBase64(att.url)
+      const encodedFilename = encodeWordIfNeeded(att.filename)
+
+      lines.push(`--${boundary}`)
+      lines.push(`Content-Type: ${att.mimeType}; name="${encodedFilename}"`)
+      lines.push('Content-Transfer-Encoding: base64')
+      lines.push(`Content-Disposition: attachment; filename="${encodedFilename}"`)
+      lines.push('')
+
+      // Chunk base64 into 76-char lines (RFC 2045 requirement)
+      const chunks = base64Data.match(/.{1,76}/g) || []
+      lines.push(...chunks)
+      lines.push('')
+    } catch (err) {
+      // Log but don't fail the entire email — skip this attachment
+      console.warn(`[Gmail] Skipping attachment "${att.filename}":`, (err as Error).message)
+    }
+  }
+
+  // ── Close boundary ───────────────────────────────────────────────────────
+  lines.push(`--${boundary}--`)
+
+  return lines.join('\r\n')
+}
+
 /**
  * Sends an email via Gmail API.
- * Builds a fully RFC 2822 compliant message with all required headers.
+ * Supports plain text (no attachments) and MIME multipart (with attachments).
+ * Builds fully RFC 2822 / RFC 2045 compliant messages.
  */
 export async function sendEmail(options: SendEmailOptions): Promise<SentEmailResult> {
-  const { userEmail, to, subject, body, replyToMessageId, threadId } = options
+  const { userEmail, to, subject, body, replyToMessageId, threadId, attachments = [] } = options
 
   const auth = await getAuthenticatedClient(userEmail)
   const gmail = google.gmail({ version: 'v1', auth })
 
-  // ── Build RFC 2822 compliant email ────────────────────────────────────────
   const dateStr = new Date().toUTCString()
-  const emailLines: string[] = []
+  let rawEmail: string
 
-  emailLines.push(`From: ${userEmail}`)           // REQUIRED — sender identity
-  emailLines.push(`To: ${to}`)
-  emailLines.push(`Subject: ${subject}`)
-  emailLines.push(`Date: ${dateStr}`)              // RECOMMENDED by RFC 2822
-  emailLines.push('MIME-Version: 1.0')
-  emailLines.push('Content-Type: text/plain; charset=UTF-8')
-  emailLines.push('Content-Transfer-Encoding: 8bit')
+  if (attachments.length > 0) {
+    // ── MIME multipart/mixed (attachments present) ───────────────────────
+    rawEmail = await buildMimeMultipart({
+      from: userEmail,
+      to,
+      subject,
+      body,
+      date: dateStr,
+      replyToMessageId,
+      attachments,
+    })
+  } else {
+    // ── Simple text/plain (no attachments) ──────────────────────────────
+    const emailLines: string[] = []
 
-  if (replyToMessageId) {
-    emailLines.push(`In-Reply-To: ${replyToMessageId}`)
-    emailLines.push(`References: ${replyToMessageId}`)
+    emailLines.push(`From: ${userEmail}`)
+    emailLines.push(`To: ${to}`)
+    emailLines.push(`Subject: ${encodeWordIfNeeded(subject)}`)
+    emailLines.push(`Date: ${dateStr}`)
+    emailLines.push('MIME-Version: 1.0')
+    emailLines.push('Content-Type: text/plain; charset=UTF-8')
+    emailLines.push('Content-Transfer-Encoding: 8bit')
+
+    if (replyToMessageId) {
+      emailLines.push(`In-Reply-To: ${replyToMessageId}`)
+      emailLines.push(`References: ${replyToMessageId}`)
+    }
+
+    emailLines.push('')
+    emailLines.push(body)
+
+    rawEmail = emailLines.join('\r\n')
   }
-
-  // RFC 2822: blank line separates headers from body
-  emailLines.push('')
-  emailLines.push(body)
-
-  const rawEmail = emailLines.join('\r\n')
 
   // URL-safe base64 encoding required by Gmail API
   const encodedEmail = Buffer.from(rawEmail, 'utf-8')

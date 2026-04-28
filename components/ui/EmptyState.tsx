@@ -21,33 +21,34 @@ export function EmptyState({ icon: Icon, title, description, action, className }
       transition={{ duration: 0.4, type: 'spring', stiffness: 120, damping: 20 }}
     >
       <motion.div
-        className="w-16 h-16 flex items-center justify-center mb-5 relative"
+        className="w-14 h-14 flex items-center justify-center mb-5 rounded-2xl"
         style={{
-          background: 'rgba(255,0,0,0.06)',
-          border: '2px solid rgba(255,0,0,0.30)',
-          boxShadow: '0 0 24px rgba(255,0,0,0.12)',
-          imageRendering: 'pixelated',
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          backdropFilter: 'blur(12px)',
         }}
         animate={{ y: [0, -5, 0] }}
         transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
       >
-        <Icon size={26} style={{ color: 'rgba(255,0,0,0.7)' }} className="relative z-10" />
+        <Icon size={22} style={{ color: 'rgba(255,255,255,0.45)' }} />
       </motion.div>
 
       <h3
         className="text-white mb-2"
-        style={{ fontFamily: "'VT323', monospace", fontSize: '1.5rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+        style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '15px', fontWeight: 600, letterSpacing: '-0.02em' }}
       >
         {title}
       </h3>
+
       {description && (
         <p
-          className="max-w-xs leading-snug"
-          style={{ fontFamily: "'VT323', monospace", fontSize: '16px', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+          className="max-w-xs leading-relaxed"
+          style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '13px', color: 'rgba(255,255,255,0.35)', letterSpacing: '-0.01em' }}
         >
           {description}
         </p>
       )}
+
       {action && <div className="mt-5">{action}</div>}
     </motion.div>
   )

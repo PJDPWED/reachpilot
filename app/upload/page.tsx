@@ -9,9 +9,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, CheckCircle2, AlertCircle,
   Sparkles, ChevronRight, X, Table, ArrowRight,
+  Paperclip, File as FileIcon, Trash2,
 } from 'lucide-react'
 import { cn } from '@/utils/helpers'
 import toast from 'react-hot-toast'
+import type { CampaignAttachment } from '@/types'
 
 interface ParsedLead {
   email: string
@@ -31,6 +33,22 @@ interface UploadResult {
 const STEPS = ['Upload', 'Preview', 'Done'] as const
 type Step = 'upload' | 'preview' | 'done'
 
+const ATTACHMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx'
+const ATTACHMENT_MIME_LABELS: Record<string, string> = {
+  'application/pdf': 'PDF',
+  'image/jpeg': 'JPG',
+  'image/png': 'PNG',
+  'image/webp': 'WEBP',
+  'application/msword': 'DOC',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function UploadPage() {
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
@@ -39,6 +57,8 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<UploadResult | null>(null)
   const [step, setStep] = useState<Step>('upload')
+  const [attachments, setAttachments] = useState<CampaignAttachment[]>([])
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -87,6 +107,9 @@ export default function UploadPage() {
       formData.append('file', file)
       formData.append('campaignName', campaignName.trim())
       formData.append('generateAI', String(generateAI))
+      if (attachments.length > 0) {
+        formData.append('attachments', JSON.stringify(attachments))
+      }
       const res = await fetch('/api/upload', { method: 'POST', body: formData })
       const json = await res.json()
       if (!json.success) { toast.error(json.error || 'Failed to create campaign'); return }
@@ -100,7 +123,53 @@ export default function UploadPage() {
     }
   }
 
-  const reset = () => { setFile(null); setResult(null); setCampaignName(''); setStep('upload') }
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    if (attachments.length + files.length > 3) {
+      toast.error('Max 3 attachments per campaign')
+      return
+    }
+
+    setUploadingAttachment(true)
+    for (const f of files) {
+      try {
+        const fd = new FormData()
+        fd.append('file', f)
+        const res = await fetch('/api/attachments', { method: 'POST', body: fd })
+        const json = await res.json()
+        if (!json.success) {
+          toast.error(json.error || `Failed to upload ${f.name}`)
+          continue
+        }
+        setAttachments((prev) => [...prev, json.data as CampaignAttachment])
+      } catch {
+        toast.error(`Upload failed for ${f.name}`)
+      }
+    }
+    setUploadingAttachment(false)
+    // Reset input so same file can be re-selected
+    e.target.value = ''
+  }
+
+  const handleRemoveAttachment = async (att: CampaignAttachment) => {
+    // Optimistically remove from UI
+    setAttachments((prev) => prev.filter((a) => a.storagePath !== att.storagePath))
+    // Delete from storage in background
+    fetch('/api/attachments', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storagePath: att.storagePath }),
+    }).catch(() => {/* ignore — orphaned file is fine */})
+  }
+
+  const reset = () => {
+    setFile(null)
+    setResult(null)
+    setCampaignName('')
+    setStep('upload')
+    setAttachments([])
+  }
 
   const stepIndex = { upload: 0, preview: 1, done: 2 }[step]
 
@@ -125,10 +194,10 @@ export default function UploadPage() {
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300"
                     style={{
-                      background: i < stepIndex ? 'rgba(52,211,153,0.15)' : i === stepIndex ? 'linear-gradient(135deg, #6366f1, #7c3aed)' : 'rgba(255,255,255,0.06)',
+                      background: i < stepIndex ? 'rgba(52,211,153,0.15)' : i === stepIndex ? '#ffffff' : 'rgba(255,255,255,0.06)',
                       border: i < stepIndex ? '1px solid rgba(52,211,153,0.4)' : i === stepIndex ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                      color: i < stepIndex ? '#34d399' : i === stepIndex ? '#fff' : 'var(--text-muted)',
-                      boxShadow: i === stepIndex ? '0 4px 12px rgba(99,102,241,0.4)' : 'none',
+                      color: i < stepIndex ? '#34d399' : i === stepIndex ? '#000000' : 'var(--text-muted)',
+                      boxShadow: i === stepIndex ? '0 4px 12px rgba(255,255,255,0.20)' : 'none',
                     }}
                   >
                     {i < stepIndex ? <CheckCircle2 size={13} /> : i + 1}
@@ -168,11 +237,11 @@ export default function UploadPage() {
                 className="relative rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden"
                 style={{
                   background: isDragActive
-                    ? 'rgba(99,102,241,0.08)'
+                    ? 'rgba(255,255,255,0.04)'
                     : file
                     ? 'rgba(52,211,153,0.05)'
                     : 'rgba(255,255,255,0.03)',
-                  border: `2px dashed ${isDragActive ? 'rgba(99,102,241,0.5)' : file ? 'rgba(52,211,153,0.4)' : 'rgba(255,255,255,0.10)'}`,
+                  border: `2px dashed ${isDragActive ? 'rgba(255,255,255,0.35)' : file ? 'rgba(52,211,153,0.4)' : 'rgba(255,255,255,0.10)'}`,
                   padding: '48px 32px',
                 }}
               >
@@ -226,13 +295,13 @@ export default function UploadPage() {
                         <motion.div
                           className="w-14 h-14 rounded-2xl flex items-center justify-center"
                           style={{
-                            background: isDragActive ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)',
-                            border: `1px solid ${isDragActive ? 'rgba(99,102,241,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                            background: isDragActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${isDragActive ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.08)'}`,
                           }}
                           animate={isDragActive ? { scale: [1, 1.05, 1] } : {}}
                           transition={{ duration: 0.5, repeat: Infinity }}
                         >
-                          <Upload size={22} style={{ color: isDragActive ? 'var(--accent-light)' : 'var(--text-muted)' }} />
+                          <Upload size={22} style={{ color: isDragActive ? 'rgba(255,255,255,0.70)' : 'var(--text-muted)' }} />
                         </motion.div>
                         <div className="text-center">
                           <p className="font-medium text-white">
@@ -256,9 +325,9 @@ export default function UploadPage() {
                 <div className="flex items-start gap-3">
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                    style={{ background: 'rgba(99,102,241,0.12)' }}
+                    style={{ background: 'rgba(255,255,255,0.06)' }}
                   >
-                    <Table size={13} style={{ color: 'var(--accent-light)' }} />
+                    <Table size={13} style={{ color: 'rgba(255,255,255,0.70)' }} />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-white mb-2">Expected format</p>
@@ -278,7 +347,7 @@ export default function UploadPage() {
                     </div>
                     <p className="text-xs mt-2 font-sans" style={{ color: 'var(--text-muted)' }}>
                       Only <code className="text-red-400 font-mono">email</code> is required —{' '}
-                      <span style={{ color: 'var(--accent-light)' }}>AI generates subject &amp; body automatically</span>
+                      <span style={{ color: 'rgba(255,255,255,0.70)' }}>AI generates subject &amp; body automatically</span>
                     </p>
                   </div>
                 </div>
@@ -287,10 +356,11 @@ export default function UploadPage() {
               <motion.button
                 onClick={handlePreview}
                 disabled={!file || uploading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-white"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold"
                 style={{
-                  background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                  boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  boxShadow: '0 4px 20px rgba(255,255,255,0.12)',
                   opacity: !file || uploading ? 0.5 : 1,
                   cursor: !file || uploading ? 'not-allowed' : 'pointer',
                 }}
@@ -299,7 +369,7 @@ export default function UploadPage() {
               >
                 {uploading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                     Parsing file...
                   </>
                 ) : (
@@ -402,7 +472,7 @@ export default function UploadPage() {
                             {lead.subject ? (
                               lead.subject.slice(0, 35) + (lead.subject.length > 35 ? '…' : '')
                             ) : (
-                              <span className="flex items-center gap-1" style={{ color: 'var(--accent-light)' }}>
+                              <span className="flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.70)' }}>
                                 <Sparkles size={10} /> AI will generate
                               </span>
                             )}
@@ -411,7 +481,7 @@ export default function UploadPage() {
                             {lead.body ? (
                               lead.body.slice(0, 40) + (lead.body.length > 40 ? '…' : '')
                             ) : (
-                              <span className="flex items-center gap-1" style={{ color: 'var(--accent-light)' }}>
+                              <span className="flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.70)' }}>
                                 <Sparkles size={10} /> AI will generate
                               </span>
                             )}
@@ -451,14 +521,14 @@ export default function UploadPage() {
                 {/* AI toggle */}
                 <div
                   className="flex items-center justify-between p-4 rounded-xl"
-                  style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
                 >
                   <div className="flex items-start gap-2.5">
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ background: 'rgba(99,102,241,0.2)' }}
+                      style={{ background: 'rgba(255,255,255,0.08)' }}
                     >
-                      <Sparkles size={13} style={{ color: 'var(--accent-light)' }} />
+                      <Sparkles size={13} style={{ color: 'rgba(255,255,255,0.70)' }} />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-white">AI Email Generation</p>
@@ -471,7 +541,7 @@ export default function UploadPage() {
                     onClick={() => setGenerateAI(!generateAI)}
                     className="relative flex-shrink-0 w-10 h-5.5 rounded-full transition-colors duration-200"
                     style={{
-                      background: generateAI ? '#6366f1' : 'rgba(255,255,255,0.12)',
+                      background: generateAI ? '#ffffff' : 'rgba(255,255,255,0.12)',
                       width: '40px',
                       height: '22px',
                     }}
@@ -482,6 +552,102 @@ export default function UploadPage() {
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     />
                   </button>
+                </div>
+
+                {/* Attachments */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Paperclip size={13} style={{ color: 'rgba(255,255,255,0.50)' }} />
+                      <span className="text-sm font-medium text-white">Attachments</span>
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
+                      >
+                        {attachments.length}/3
+                      </span>
+                    </div>
+                    {attachments.length < 3 && (
+                      <label
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer text-xs font-medium transition-all"
+                        style={{
+                          background: uploadingAttachment ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.07)',
+                          border: '1px solid rgba(255,255,255,0.10)',
+                          color: uploadingAttachment ? 'var(--text-muted)' : 'rgba(255,255,255,0.80)',
+                          pointerEvents: uploadingAttachment ? 'none' : 'auto',
+                        }}
+                      >
+                        {uploadingAttachment ? (
+                          <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Upload size={11} />
+                        )}
+                        {uploadingAttachment ? 'Uploading…' : 'Add file'}
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept={ATTACHMENT_ACCEPT}
+                          multiple
+                          onChange={handleAttachmentUpload}
+                          disabled={uploadingAttachment}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {attachments.length === 0 ? (
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Attach CVs, photos, or documents sent with every email · PDF, JPG, PNG, DOC, DOCX · max 10 MB each
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <AnimatePresence>
+                        {attachments.map((att) => (
+                          <motion.div
+                            key={att.storagePath}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, x: -12 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                            className="flex items-center gap-3 p-3 rounded-xl"
+                            style={{
+                              background: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                            }}
+                          >
+                            <div
+                              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ background: 'rgba(255,255,255,0.07)' }}
+                            >
+                              <FileIcon size={14} style={{ color: 'rgba(255,255,255,0.60)' }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-white truncate">{att.filename}</p>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                {ATTACHMENT_MIME_LABELS[att.mimeType] ?? att.mimeType} · {formatBytes(att.size)}
+                              </p>
+                            </div>
+                            <motion.button
+                              onClick={() => handleRemoveAttachment(att)}
+                              className="w-6 h-6 flex items-center justify-center rounded-md shrink-0 transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
+                              whileHover={{ scale: 1.15 }}
+                              whileTap={{ scale: 0.9 }}
+                              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = '#f87171'}
+                              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'}
+                            >
+                              <Trash2 size={12} />
+                            </motion.button>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                      {attachments.length < 3 && (
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          Add up to {3 - attachments.length} more · PDF, JPG, PNG, DOC, DOCX · max 10 MB each
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -500,10 +666,11 @@ export default function UploadPage() {
                 <motion.button
                   onClick={handleCreateCampaign}
                   disabled={!campaignName.trim() || uploading}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
                   style={{
-                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                    boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    boxShadow: '0 4px 20px rgba(255,255,255,0.12)',
                     opacity: !campaignName.trim() || uploading ? 0.5 : 1,
                     cursor: !campaignName.trim() || uploading ? 'not-allowed' : 'pointer',
                   }}
@@ -512,7 +679,7 @@ export default function UploadPage() {
                 >
                   {uploading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                       Creating campaign...
                     </>
                   ) : (
@@ -585,10 +752,11 @@ export default function UploadPage() {
               >
                 <button
                   onClick={() => router.push(`/campaigns/${result.campaign!.id}`)}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
                   style={{
-                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                    boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
+                    background: '#ffffff',
+                    color: '#000000',
+                    boxShadow: '0 4px 20px rgba(255,255,255,0.12)',
                   }}
                 >
                   View Campaign & Start Sending

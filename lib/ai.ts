@@ -2,17 +2,28 @@ import { extractCompanyName, extractDomain } from '@/utils/helpers'
 import type { GeneratedEmail, ClassifiedReply, GeneratedFollowUp } from '@/types'
 
 // ─── Native Gemini REST Client ────────────────────────────────────────────────
-// Uses Google's Generative Language API directly — no OpenAI SDK required.
+// Uses Google's Generative Language API directly — stable v1 endpoint.
+// Model priority: gemini-2.0-flash (fastest) → gemini-1.5-flash (fallback)
 
-type GeminiModel = 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'gemini-2.0-flash-exp'
+type GeminiModel =
+  | 'gemini-2.0-flash'
+  | 'gemini-1.5-flash'
+  | 'gemini-1.5-pro'
+  | 'gemini-2.0-flash-exp'
+
+// Default fast model — widely available across all regions and free tiers
+const DEFAULT_MODEL: GeminiModel = 'gemini-2.0-flash'
+const FALLBACK_MODEL: GeminiModel = 'gemini-1.5-flash'
 
 interface GeminiOptions {
   temperature?: number
   maxTokens?: number
   jsonMode?: boolean
+  /** Override the model. Defaults to gemini-2.0-flash */
+  model?: GeminiModel
 }
 
-async function callGemini(
+async function callGeminiRaw(
   model: GeminiModel,
   systemPrompt: string,
   userPrompt: string,
@@ -20,12 +31,11 @@ async function callGemini(
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    throw new Error(
-      'GEMINI_API_KEY is not configured. Add it to your .env.local file.'
-    )
+    throw new Error('GEMINI_API_KEY is not configured. Add it to your .env.local file.')
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+  // Use stable v1 endpoint — v1beta is for experimental features only
+  const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`
 
   const body = {
     contents: [
@@ -51,13 +61,11 @@ async function callGemini(
   })
 
   if (!response.ok) {
-    const errorBody = await response.text().catch(() => 'unknown error')
-    let reason = `HTTP ${response.status}`
-    if (response.status === 400) reason = 'Bad request — check API key or model name'
-    if (response.status === 403) reason = 'API key invalid or quota exceeded'
-    if (response.status === 429) reason = 'Rate limit hit — slow down requests'
-    if (response.status === 500) reason = 'Gemini service error — retry later'
-    throw new Error(`Gemini API error (${reason}): ${errorBody.slice(0, 200)}`)
+    const errorText = await response.text().catch(() => '')
+    if (response.status === 429) {
+      throw new Error('QUOTA_EXCEEDED: Gemini API quota exceeded. Please try again later.')
+    }
+    throw new Error(`Gemini API error ${response.status}: ${errorText.slice(0, 300)}`)
   }
 
   const data = await response.json()
@@ -80,6 +88,154 @@ async function callGemini(
   }
 
   return text
+}
+
+async function callOpenRouter(
+  systemPrompt: string,
+  userPrompt: string,
+  options: GeminiOptions = {}
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY not configured — add it to .env.local to enable fallback')
+  }
+
+  const models = [
+    'google/gemini-2.0-flash-exp:free',
+    'meta-llama/llama-3.2-11b-vision-instruct:free',
+  ]
+
+  let lastErr: Error | null = null
+  for (const model of models) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://rocketlead.app',
+          'X-Title': 'Rocket Lead',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens ?? 600,
+          ...(options.jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        }),
+      })
+
+      if (!response.ok) {
+        const txt = await response.text().catch(() => '')
+        throw new Error(`OpenRouter ${model} error ${response.status}: ${txt.slice(0, 200)}`)
+      }
+
+      const data = await response.json()
+      const text = data.choices?.[0]?.message?.content
+      if (!text) throw new Error(`OpenRouter returned empty content from ${model}`)
+      return text
+    } catch (err) {
+      lastErr = err as Error
+      console.warn(`[OpenRouter] ${model} failed: ${(err as Error).message.slice(0, 80)}`)
+    }
+  }
+  throw lastErr ?? new Error('All OpenRouter models failed')
+}
+
+async function callOllama(
+  systemPrompt: string,
+  userPrompt: string,
+  options: GeminiOptions = {}
+): Promise<string> {
+  const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
+  const model = process.env.OLLAMA_MODEL || 'qwen2.5-coder:14b'
+
+  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: options.temperature ?? 0.7,
+      max_tokens: options.maxTokens ?? 600,
+      stream: false,
+    }),
+    signal: AbortSignal.timeout(30000),
+  })
+
+  if (!response.ok) {
+    const txt = await response.text().catch(() => '')
+    throw new Error(`Ollama error ${response.status}: ${txt.slice(0, 200)}`)
+  }
+
+  const data = await response.json()
+  const text = data.choices?.[0]?.message?.content
+  if (!text) throw new Error('Ollama returned empty content')
+  return text
+}
+
+/**
+ * Calls Gemini with automatic model fallback.
+ * Tries DEFAULT_MODEL (gemini-2.0-flash) first, falls back to FALLBACK_MODEL (gemini-1.5-flash).
+ * If OLLAMA_ENABLED=true, tries Ollama first (free, unlimited, local).
+ * If Gemini returns a 429 quota error, tries Ollama then OpenRouter as secondary fallbacks.
+ */
+async function callGemini(
+  model: GeminiModel,
+  systemPrompt: string,
+  userPrompt: string,
+  options: GeminiOptions = {}
+): Promise<string> {
+  // If Ollama is enabled, try it first (free, unlimited, local)
+  if (process.env.OLLAMA_ENABLED === 'true') {
+    try {
+      return await callOllama(systemPrompt, userPrompt, options)
+    } catch (ollamaErr) {
+      console.warn('[AI] Ollama failed, falling back to Gemini:', (ollamaErr as Error).message.slice(0, 80))
+    }
+  }
+
+  try {
+    return await callGeminiRaw(model, systemPrompt, userPrompt, options)
+  } catch (err) {
+    const msg = (err as Error).message || ''
+
+    // Quota exceeded — try Ollama first (local, free), then OpenRouter
+    if (msg.includes('QUOTA_EXCEEDED')) {
+      console.warn('[AI] Gemini quota exceeded — trying Ollama then OpenRouter fallback')
+      // Try Ollama first (local, free)
+      if (process.env.OLLAMA_BASE_URL) {
+        try {
+          return await callOllama(systemPrompt, userPrompt, options)
+        } catch {}
+      }
+      // Then OpenRouter
+      try {
+        return await callOpenRouter(systemPrompt, userPrompt, options)
+      } catch (orErr) {
+        console.error('[AI] All fallbacks failed:', (orErr as Error).message)
+        // Surface the original quota error (more actionable)
+      }
+    }
+
+    // Fall back to gemini-1.5-flash for model-not-found errors
+    const shouldFallback =
+      msg.includes('404') ||
+      msg.includes('not found') ||
+      msg.includes('not supported')
+
+    if (shouldFallback && model !== FALLBACK_MODEL) {
+      console.warn(`[Gemini] ${model} failed (${msg.slice(0, 80)}), falling back to ${FALLBACK_MODEL}`)
+      return await callGeminiRaw(FALLBACK_MODEL, systemPrompt, userPrompt, options)
+    }
+    throw err
+  }
 }
 
 // ─── Email Generation ──────────────────────────────────────────────────────────
@@ -126,7 +282,7 @@ Existing body to improve: """${existingBody}"""`
 Body: """${existingBody}"""
 Context: Big Reach PR — Google Business Profile optimization.`
 
-  const raw = await callGemini('gemini-1.5-pro', systemPrompt, userPrompt, {
+  const raw = await callGemini(DEFAULT_MODEL, systemPrompt, userPrompt, {
     temperature: 0.7,
     maxTokens: 600,
     jsonMode: true,
@@ -213,7 +369,7 @@ Output valid JSON with keys:
   const userPrompt = `Classify this reply:\n"""\n${replyContent.slice(0, 1500)}\n"""`
 
   try {
-    const raw = await callGemini('gemini-1.5-flash', systemPrompt, userPrompt, {
+    const raw = await callGemini(DEFAULT_MODEL, systemPrompt, userPrompt, {
       temperature: 0.1,
       maxTokens: 150,
       jsonMode: true,
@@ -265,7 +421,7 @@ Output valid JSON with keys: "subject" and "body".`
 Make the follow-up highly persuasive and tailored to their business type based on the domain.`
 
   try {
-    const raw = await callGemini('gemini-1.5-pro', systemPrompt, userPrompt, {
+    const raw = await callGemini(DEFAULT_MODEL, systemPrompt, userPrompt, {
       temperature: 0.7,
       maxTokens: 600,
       jsonMode: true,

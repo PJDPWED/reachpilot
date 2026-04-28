@@ -49,7 +49,7 @@ export default function CampaignsPage() {
     completed: '#34d399',
     failed: '#f87171',
     paused: '#fbbf24',
-    pending: '#6366f1',
+    pending: '#ffffff',
   }
 
   return (
@@ -67,8 +67,9 @@ export default function CampaignsPage() {
             href="/upload"
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
             style={{
-              background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-              boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+              background: '#ffffff',
+              color: '#000000',
+              boxShadow: '0 4px 16px rgba(255,255,255,0.10)',
             }}
           >
             <Upload size={13} />
@@ -85,7 +86,7 @@ export default function CampaignsPage() {
               <motion.div
                 key={i}
                 className="w-2 h-2 rounded-full"
-                style={{ background: 'var(--accent)' }}
+                style={{ background: 'rgba(255,255,255,0.65)' }}
                 animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
                 transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
               />
@@ -103,8 +104,9 @@ export default function CampaignsPage() {
                 href="/upload"
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white"
                 style={{
-                  background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                  boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                  background: '#ffffff',
+                  color: '#000000',
+                  boxShadow: '0 4px 16px rgba(255,255,255,0.10)',
                 }}
               >
                 <Upload size={13} />
@@ -116,7 +118,7 @@ export default function CampaignsPage() {
       ) : (
         <StaggerList className="space-y-3">
           {campaigns.map((campaign) => {
-            const accent = accentByStatus[campaign.status] || '#6366f1'
+            const accent = accentByStatus[campaign.status] || '#ffffff'
             const total = campaign.total_leads || 0
             const sent = campaign.sent_leads || 0
             const replied = campaign.replied_leads || 0
@@ -176,7 +178,7 @@ export default function CampaignsPage() {
                       {[
                         { label: 'Leads',   value: total,   color: 'var(--text-secondary)' },
                         { label: 'Sent',    value: sent,    color: '#34d399' },
-                        { label: 'Replied', value: replied, color: '#a78bfa' },
+                        { label: 'Replied', value: replied, color: 'rgba(255,255,255,0.70)' },
                       ].map(({ label, value, color }) => (
                         <div key={label}>
                           <div className="text-base font-semibold tabular-nums" style={{ color }}>{value.toLocaleString()}</div>
@@ -202,15 +204,15 @@ export default function CampaignsPage() {
                         href={`/campaigns/${campaign.id}`}
                         className="w-8 h-8 flex items-center justify-center rounded-lg transition-all"
                         style={{
-                          background: 'rgba(99,102,241,0.1)',
-                          color: 'var(--accent-light)',
-                          border: '1px solid rgba(99,102,241,0.2)',
+                          background: 'rgba(255,255,255,0.06)',
+                          color: 'rgba(255,255,255,0.70)',
+                          border: '1px solid rgba(255,255,255,0.12)',
                         }}
                         onMouseEnter={e => {
-                          (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(99,102,241,0.2)'
+                          (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.10)'
                         }}
                         onMouseLeave={e => {
-                          (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(99,102,241,0.1)'
+                          (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)'
                         }}
                       >
                         <ChevronRight size={14} />

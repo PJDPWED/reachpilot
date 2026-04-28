@@ -45,9 +45,18 @@ export async function sendEmailWithFallback(
 
     // ── Attempt Resend fallback ──────────────────────────────────────────────
     const resendKey = process.env.RESEND_API_KEY
+    const resendFrom = process.env.RESEND_FROM_EMAIL
+
     if (!resendKey) {
-      // No fallback configured — propagate the original Gmail error
-      throw new Error(`Gmail failed (${gmailMsg}) and no RESEND_API_KEY configured`)
+      throw new Error(
+        `Gmail send failed and Resend is not configured. ` +
+        `Add RESEND_API_KEY to your .env. Gmail error: ${gmailMsg}`
+      )
+    }
+
+    if (!resendFrom) {
+      // Resend requires a verified domain — without RESEND_FROM_EMAIL we know domain isn't set up
+      console.warn('[Email] RESEND_FROM_EMAIL not set — Resend domain may not be verified')
     }
 
     console.info(`[Email] Falling back to Resend for ${options.to}`)
@@ -58,6 +67,10 @@ export async function sendEmailWithFallback(
       return { ...result, provider: 'resend' }
     } catch (resendErr) {
       const resendMsg = (resendErr as Error).message
+      console.error(`[Email] Both providers failed for ${options.to}:`, {
+        gmail: gmailMsg,
+        resend: resendMsg,
+      })
       throw new Error(
         `Both providers failed for ${options.to}. ` +
           `Gmail: ${gmailMsg} | Resend: ${resendMsg}`

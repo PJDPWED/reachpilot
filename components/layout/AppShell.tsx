@@ -5,62 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
-import { AmbientBackground } from '@/components/background/AmbientBackground'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
-  LayoutDashboard, Upload, Send, Inbox,
+  LayoutDashboard, Upload, Send, Inbox, FileSearch, Sparkles,
 } from 'lucide-react'
-
-// ─── Pixel Rocket — Loading Screen ────────────────────────────────────────────
-// Black/Red/Gold — Rocket Lead Deutschland palette
-
-const PIXEL_MAP: string[] = [
-  '000010000',
-  '000121000',
-  '001212100',
-  '011222110',
-  '011212110',
-  '001212100',
-  '010000010',
-  '100333001',
-  '000333000',
-]
-const PIXEL_COLORS: Record<string, string> = {
-  '0': 'transparent',
-  '1': '#FF0000',   // red body
-  '2': '#ffffff',   // white highlight
-  '3': '#FFCE00',   // gold flame
-}
-
-function LoadingRocket() {
-  return (
-    <motion.div
-      animate={{ y: [0, -8, 0] }}
-      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(9, 7px)',
-          gridTemplateRows: 'repeat(9, 7px)',
-          imageRendering: 'pixelated',
-          gap: 0,
-          filter: 'drop-shadow(0 0 14px rgba(255,0,0,0.9))',
-        }}
-      >
-        {PIXEL_MAP.flatMap((row, y) =>
-          row.split('').map((cell, x) => (
-            <div
-              key={`${y}-${x}`}
-              style={{ width: 7, height: 7, background: PIXEL_COLORS[cell] ?? 'transparent' }}
-            />
-          ))
-        )}
-      </div>
-    </motion.div>
-  )
-}
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
 
@@ -71,9 +20,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/upload',    label: 'Upload',  icon: Upload },
-    { href: '/campaigns', label: 'Campaigns',  icon: Send },
-    { href: '/replies',   label: 'Replies',    icon: Inbox },
+    { href: '/upload',    label: 'Upload',    icon: Upload },
+    { href: '/campaigns', label: 'Campaigns', icon: Send },
+    { href: '/replies',   label: 'Replies',   icon: Inbox },
+    { href: '/valuator',  label: 'CV',        icon: FileSearch },
+    { href: '/ausbildung', label: 'AI Lead',  icon: Sparkles },
   ]
 
   useEffect(() => {
@@ -86,62 +37,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div
         className="flex items-center justify-center min-h-dvh"
-        style={{ background: '#000000' }}
       >
-        <AmbientBackground />
-
         <motion.div
-          className="flex flex-col items-center gap-6 relative z-10"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+          className="flex flex-col items-center gap-5 relative z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
         >
-          <LoadingRocket />
-
-          {/* Brand name */}
-          <motion.div
-            className="text-center"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div
-              className="text-white mb-1 font-mono"
-              style={{ fontSize: '2rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}
-            >
-              ROCKET LEAD
-            </div>
-            <div
-              className="tracking-widest uppercase animate-pixel-flicker font-mono"
-              style={{
-                fontSize: '14px',
-                color: '#FF0000',
-                letterSpacing: '0.16em',
-              }}
-            >
-              INITIALIZING SYSTEM...
-            </div>
-          </motion.div>
-
-          {/* Pixel loading bar */}
-          <div
-            style={{
-              width: 140,
-              height: 6,
-              background: 'rgba(255,0,0,0.08)',
-              border: '2px solid rgba(255,0,0,0.35)',
-              overflow: 'hidden',
-            }}
-          >
-            <motion.div
-              style={{
-                height: '100%',
-                background: 'repeating-linear-gradient(90deg, #FF0000 0px, #FF0000 6px, #FFCE00 6px, #FFCE00 12px)',
-                backgroundSize: '12px 100%',
-              }}
-              animate={{ width: ['0%', '100%'], backgroundPosition: ['0% 0%', '100% 0%'] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-            />
+          {/* Wordmark */}
+          <div className="select-none" style={{ fontFamily: 'var(--font-geist-sans)', fontSize: '18px', fontWeight: 700, letterSpacing: '-0.04em' }}>
+            <span style={{ color: '#ffffff' }}>Rocket</span>
+            <span style={{ color: 'rgba(255,255,255,0.30)' }}>Lead</span>
+          </div>
+          {/* Dots */}
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                style={{ width: 4, height: 4, borderRadius: 9999, background: 'rgba(255,255,255,0.45)' }}
+                animate={{ opacity: [0.2, 1, 0.2] }}
+                transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.2 }}
+              />
+            ))}
           </div>
         </motion.div>
       </div>
@@ -151,20 +68,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (!session) return null
 
   return (
-    <div
-      className="relative min-h-dvh"
-      style={{ background: '#000000' }}
-    >
-      <AmbientBackground />
+    <div className="relative min-h-dvh">
       <Sidebar />
-      <main className="flex-1 md:ml-64 min-h-dvh relative z-10 pb-16 md:pb-0">
+      <main className="flex-1 md:ml-[220px] min-h-dvh relative z-10 pb-20 md:pb-0">
         <div className="w-full px-4 md:px-8 py-8">
           {children}
         </div>
       </main>
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10">
-        <div className="flex justify-around items-center py-2">
+      {/* Mobile Bottom Nav — scrollable so all 6 items fit */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50"
+        aria-label="Mobile navigation"
+        style={{
+          background: 'rgba(6, 6, 8, 0.92)',
+          backdropFilter: 'blur(24px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+          borderTop: '1px solid rgba(255,255,255,0.09)',
+        }}
+      >
+        <div className="flex items-center overflow-x-auto scrollbar-none py-1.5 px-2 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname.startsWith(item.href)
@@ -172,18 +94,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors"
+                aria-current={isActive ? 'page' : undefined}
+                className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all shrink-0 min-w-[52px]"
                 style={{
-                  color: isActive ? '#FF0000' : 'rgba(255,255,255,0.6)',
+                  color: isActive ? '#ffffff' : 'rgba(255,255,255,0.35)',
+                  background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  border: isActive ? '1px solid rgba(255,255,255,0.14)' : '1px solid transparent',
                 }}
               >
-                <Icon size={20} />
-                <span className="text-xs font-mono">{item.label}</span>
+                <Icon size={18} strokeWidth={isActive ? 2 : 1.6} />
+                <span
+                  style={{
+                    fontFamily: 'var(--font-geist-sans)',
+                    fontSize: '10px',
+                    letterSpacing: '-0.01em',
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  {item.label}
+                </span>
               </Link>
             )
           })}
         </div>
-      </div>
+      </nav>
     </div>
   )
 }
